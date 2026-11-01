@@ -1,10 +1,26 @@
 import { bangs } from "./bang";
 import "./global.css";
 
+type CustomBang = { t: string; u: string; d: string };
+const CUSTOM_KEY = "custom-bangs";
+
+function readCustomBangs(): CustomBang[] | null {
+  try {
+    const saved = localStorage.getItem(CUSTOM_KEY);
+    if (saved === null) return null;
+    const parsed: unknown = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter((b): b is CustomBang =>
+      typeof b?.t === "string" && typeof b?.u === "string" && typeof b?.d === "string");
+  } catch {
+    return null;
+  }
+}
+
 function noSearchDefaultPageRender() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
   app.innerHTML = `
-    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
+    <div class="page">
       <div class="content-container">
         <h1>Und*ck</h1>
         <p>DuckDuckGo's bang redirects are too slow. Add the following URL as a custom search engine to your browser. Enables <a href="https://duckduckgo.com/bang.html" target="_blank">all of DuckDuckGo's bangs.</a></p>
@@ -19,6 +35,17 @@ function noSearchDefaultPageRender() {
             <img src="/clipboard.svg" alt="Copy" />
           </button>
         </div>
+        <section class="settings">
+          <h2>Your bangs</h2>
+          <p>Use your own list instead of the built-in bangs. Enter one shortcut and search URL per line, separated by a space. Use <code>{{{s}}}</code> where the search terms go.</p>
+          <label for="custom-bangs">Custom bangs</label>
+          <textarea id="custom-bangs" rows="5" placeholder="gh https://github.com/search?q={{{s}}}"></textarea>
+          <div class="settings-actions">
+            <button type="button" id="save-bangs">Save custom list</button>
+            <button type="button" id="reset-bangs">Use built-in bangs</button>
+          </div>
+          <p id="bang-status" role="status"></p>
+        </section>
       </div>
       <footer class="footer">
         <a href="https://t3.chat" target="_blank">t3.chat</a>
@@ -29,6 +56,38 @@ function noSearchDefaultPageRender() {
       </footer>
     </div>
   `;
+
+  const editor = app.querySelector<HTMLTextAreaElement>("#custom-bangs")!;
+  const status = app.querySelector<HTMLParagraphElement>("#bang-status")!;
+  const custom = readCustomBangs();
+  editor.value = custom?.map((b) => `${b.t} ${b.u}`).join("\n") ?? "";
+  status.textContent = custom ? "Using your custom list on this browser." : "Using built-in bangs.";
+  app.querySelector<HTMLButtonElement>("#save-bangs")!.addEventListener("click", () => {
+    const entries: CustomBang[] = [];
+    const seen = new Set<string>();
+    for (const [index, line] of editor.value.split("\n").entries()) {
+      if (!line.trim()) continue;
+      const match = line.trim().match(/^!?([^\s!]+)\s+(\S+)$/);
+      try {
+        if (!match || !match[2].includes("{{{s}}}")) throw new Error();
+        const url = new URL(match[2]);
+        if (!["http:", "https:"].includes(url.protocol)) throw new Error();
+        const t = match[1].toLowerCase();
+        if (seen.has(t)) throw new Error();
+        seen.add(t);
+        entries.push({ t, u: match[2], d: url.host });
+      } catch {
+        status.textContent = `Check line ${index + 1}: use a unique shortcut and an HTTP(S) URL containing {{{s}}}.`;
+        return;
+      }
+    }
+    localStorage.setItem(CUSTOM_KEY, JSON.stringify(entries));
+    status.textContent = "Custom list saved on this browser.";
+  });
+  app.querySelector<HTMLButtonElement>("#reset-bangs")!.addEventListener("click", () => {
+    localStorage.removeItem(CUSTOM_KEY);
+    status.textContent = "Using built-in bangs. Your editor contents have not been saved.";
+  });
 
   const copyButton = app.querySelector<HTMLButtonElement>(".copy-button")!;
   const copyIcon = copyButton.querySelector("img")!;
@@ -58,7 +117,7 @@ function getBangredirectUrl() {
   const match = query.match(/!(\S+)/i);
 
   const bangCandidate = match?.[1]?.toLowerCase();
-  const selectedBang = bangs.find((b) => b.t === bangCandidate) ?? defaultBang;
+  const selectedBang = (readCustomBangs() ?? bangs).find((b) => b.t === bangCandidate) ?? defaultBang;
 
   // Remove the first bang from the query
   const cleanQuery = query.replace(/!\S+\s*/i, "").trim();
