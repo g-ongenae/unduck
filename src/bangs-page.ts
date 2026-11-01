@@ -3,6 +3,8 @@ import {
   DEFAULT_BANG_KEY,
   activeBangs,
   builtInBang,
+  builtInBangFor,
+  mainShortcut,
   exportBackup,
   parseBackup,
   readDefaultShortcut,
@@ -127,7 +129,7 @@ export function renderBuiltInBangs(
     dialog.showModal();
   }
   function updateDefaultButton(bang: Bang) {
-    const isDefault = readDefaultShortcut() === bang.t;
+    const isDefault = mainShortcut(readDefaultShortcut(), userBangs) === bang.t;
     defaultButton.disabled = isDefault;
     defaultButton.textContent = isDefault
       ? "Default search engine ✓"
@@ -159,11 +161,12 @@ export function renderBuiltInBangs(
           "You already have a bang with this shortcut. Edit it instead.",
         );
       const builtIn = builtInBang(entry.t);
+      const triggered = builtInBangFor(entry.t);
       if (
         !editing &&
-        builtIn &&
+        triggered &&
         !window.confirm(
-          `!${entry.t} is a built-in bang for ${builtIn.s}. Override it with your version?`,
+          `!${entry.t} is a built-in bang for ${triggered.s}. Override it with your version?`,
         )
       )
         return;
@@ -311,7 +314,7 @@ export function renderBuiltInBangs(
 
   function renderRows() {
     updateSelection();
-    const defaultShortcut = readDefaultShortcut();
+    const defaultShortcut = mainShortcut(readDefaultShortcut(), userBangs);
     const start = page * pageSize;
     const fragment = document.createDocumentFragment();
     for (const bang of filtered.slice(start, start + pageSize)) {
@@ -329,8 +332,10 @@ export function renderBuiltInBangs(
         onChange();
       });
       selection.append(checkbox);
+      const shortcut = document.createElement("td");
+      shortcut.textContent = `!${bang.t}`;
+      row.append(shortcut);
       for (const value of [
-        `!${bang.t}`,
         bang.s,
         bang.d,
         bang.c || "—",
@@ -351,7 +356,15 @@ export function renderBuiltInBangs(
         const badge = document.createElement("span");
         badge.className = `bang-badge bang-badge-${label}`;
         badge.textContent = label;
-        row.firstElementChild!.append(" ", badge);
+        shortcut.append(" ", badge);
+      }
+      // Built-in aliases also apply to a user override of that built-in.
+      const aliases = bang.ts ?? builtInBang(bang.t)?.ts ?? [];
+      if (aliases.length) {
+        const list = document.createElement("small");
+        list.className = "bang-aliases";
+        list.textContent = aliases.map((t) => `!${t}`).join(" ");
+        shortcut.append(list);
       }
       const actions = document.createElement("td");
       actions.className = "bang-row-actions";
@@ -383,9 +396,15 @@ export function renderBuiltInBangs(
   function updateList(resetPage = true) {
     const term = input.value.trim().toLowerCase().replace(/^!/, "");
     filtered = bangs.filter((bang) =>
-      [bang.t, bang.s, bang.d, bang.c, bang.sc, bang.u].some((value) =>
-        value?.toLowerCase().includes(term),
-      ),
+      [
+        bang.t,
+        ...(bang.ts ?? builtInBang(bang.t)?.ts ?? []),
+        bang.s,
+        bang.d,
+        bang.c,
+        bang.sc,
+        bang.u,
+      ].some((value) => value?.toLowerCase().includes(term)),
     );
     if (sortKey) {
       const key = sortKey;

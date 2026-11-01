@@ -33,7 +33,7 @@ export function renderHomePage() {
       <a class="settings-link" href="?page=settings" aria-label="Settings" title="Settings">⚙️</a>
       <div class="content-container">
         <h1>Und*ck</h1>
-        <p>DuckDuckGo's bang redirects are too slow. Add the following URL as a custom search engine to your browser. Enables <a href="https://duckduckgo.com/bang.html" target="_blank">all of DuckDuckGo's bangs.</a></p>
+        <p>DuckDuckGo's bang redirects are too slow. Add the following URL as a custom search engine to your browser. Uses the <a href="https://github.com/kagisearch/bangs" target="_blank">Kagi bangs catalog.</a></p>
         <div class="url-container"> 
           <input 
             type="text" 

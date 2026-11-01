@@ -38,6 +38,14 @@ function getRedirectUrl(query: string) {
     resolveDefaultBang(userBangs, disabled).bang;
   // If the query is just `!gh`, use `github.com` instead of `github.com/search?q=`
   if (!terms) return `https://${bang.d}`;
+  if (bang.x) {
+    const match = new RegExp(bang.x.split("\\\\").join("\\")).exec(terms);
+    if (match)
+      return bang.u.replace(/\$(\d+)/g, (_, index: string) =>
+        encodeURIComponent(match[Number(index)] ?? ""),
+      );
+    return `https://${bang.d}`;
+  }
   // Replace %2F with / to fix formats like "!ghr+t3dotgg/unduck"
   return bang.u.replace(
     "{{{s}}}",

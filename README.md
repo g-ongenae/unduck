@@ -1,6 +1,6 @@
 # Unduck
 
-DuckDuckGo's bang redirects are too slow. Add the following URL as a custom search engine to your browser. Enables all of DuckDuckGo's bangs to work, but much faster.
+DuckDuckGo's bang redirects are too slow. Add the following URL as a custom search engine to your browser. Uses the community-maintained [Kagi bangs catalog](https://github.com/kagisearch/bangs) for fast client-side redirects.
 
 ```
 https://g-ongenae.github.io/unduck/?q=%s
@@ -14,9 +14,19 @@ Install dependencies with `pnpm install`, then start the development server with
 - `pnpm lint:fix` applies automatic lint fixes.
 - `pnpm format` formats the project with Prettier.
 - `pnpm format:check` checks formatting without changing files.
+- `pnpm test` runs the catalog import tests.
 - `pnpm build` checks TypeScript and builds the production app.
 
-CI runs lint, formatting, and build checks on pull requests and pushes to `main`.
+Development and production builds download `data/bangs.json` from
+[kagisearch/bangs](https://github.com/kagisearch/bangs) at the commit pinned in
+`scripts/kagi-bangs.mjs`; update `KAGI_BANGS_COMMIT` to pick up upstream changes.
+Relative search URLs, which point at Kagi search, are sent to DuckDuckGo with the same
+query instead. The catalog is bundled with the app; searches do not fetch it at
+runtime. Starting Vite requires network access, and a failed download or invalid
+catalog stops the build. Upstream licensing is preserved in
+`scripts/KAGI-BANGS-LICENSE`.
+
+CI runs lint, formatting, test, and build checks on pull requests and pushes to `main`.
 
 ## Firefox
 

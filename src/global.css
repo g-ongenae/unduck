@@ -620,6 +620,11 @@ textarea {
   font-family: system-ui, sans-serif;
   font-size: 11px;
 }
+.bang-aliases {
+  display: block;
+  margin-top: 2px;
+  color: #666;
+}
 .bang-table td.bang-row-actions {
   min-width: auto;
   width: 1%;
@@ -663,6 +668,9 @@ textarea {
   color: #b42318;
 }
 @media (prefers-color-scheme: dark) {
+  .bang-aliases {
+    color: #aaa;
+  }
   .bang-badge {
     background: #333;
   }
