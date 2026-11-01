@@ -378,6 +378,7 @@ export function renderBuiltInBangs(
   const pageSize = 100;
   let page = 0;
   let filtered = bangs;
+  let range = "";
   const disabled = readDisabledBangs();
   function saveSelection() {
     writeDisabledBangs(disabled);
@@ -389,6 +390,8 @@ export function renderBuiltInBangs(
     );
     selectAll.checked = enabledCount === bangs.length;
     selectAll.indeterminate = enabledCount > 0 && enabledCount < bangs.length;
+    const modifiedCount = userBangs.filter(overriddenShortcut).length;
+    count.textContent = `${range} · ${enabledCount.toLocaleString()} enabled, ${(bangs.length - enabledCount).toLocaleString()} disabled, ${userBangs.length - modifiedCount} custom, ${modifiedCount} modified`;
   }
   selectAll.addEventListener("change", () => {
     if (selectAll.checked) disabled.clear();
@@ -399,7 +402,6 @@ export function renderBuiltInBangs(
   });
 
   function renderRows() {
-    updateSelection();
     const defaultShortcut = mainShortcut(readDefaultShortcut(), userBangs);
     const start = page * pageSize;
     const fragment = document.createDocumentFragment();
@@ -472,7 +474,8 @@ export function renderBuiltInBangs(
       fragment.append(row);
     }
     body.replaceChildren(fragment);
-    count.textContent = `${filtered.length ? start + 1 : 0}–${Math.min(start + pageSize, filtered.length)} of ${filtered.length.toLocaleString()} bangs${filtered.length !== bangs.length ? ` (${bangs.length.toLocaleString()} total)` : ""}`;
+    range = `${filtered.length ? start + 1 : 0}–${Math.min(start + pageSize, filtered.length)} of ${filtered.length.toLocaleString()} bangs${filtered.length !== bangs.length ? ` (${bangs.length.toLocaleString()} total)` : ""}`;
+    updateSelection();
     pageLabel.textContent = `Page ${page + 1} of ${Math.max(1, Math.ceil(filtered.length / pageSize))}`;
     previous.disabled = page === 0;
     next.disabled = start + pageSize >= filtered.length;
