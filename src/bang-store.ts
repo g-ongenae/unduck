@@ -6,8 +6,10 @@ export type Bang = {
   c?: string;
   sc?: string;
   u: string;
-  /** Aliases of a built-in shortcut. */
+  /** Other shortcuts for the same bang. A user bang without them keeps its built-in's aliases. */
   ts?: string[];
+  /** Main shortcut of the built-in a user bang replaces, when its own shortcut differs. */
+  o?: string;
   x?: string;
 };
 export type Backup = {
@@ -56,16 +58,35 @@ export const builtInBang = (t: string): Bang | undefined => {
 /** The built-in bang that `t` triggers, either as its main shortcut or as an alias. */
 export const builtInBangFor = (t: string): Bang | undefined =>
   builtInsByShortcut.get(t);
+/** Main shortcut of the built-in that a user bang replaces, if any. */
+export const overriddenShortcut = (b: Bang): string | undefined =>
+  b.o ?? (builtInBang(b.t) ? b.t : undefined);
+export const aliasesOf = (b: Bang): string[] =>
+  b.ts ?? builtInBang(b.o ?? b.t)?.ts ?? [];
+
+/** The bang that `t` triggers, enabled or not. User bangs win over built-ins they share a shortcut with. */
+function findBang(t: string, userBangs: Bang[]): Bang | undefined {
+  const userBang =
+    userBangs.find((b) => b.t === t) ??
+    userBangs.find((b) => aliasesOf(b).includes(t));
+  if (userBang) return userBang;
+  const builtIn = builtInBangFor(t);
+  // A user bang replacing this built-in decides its shortcuts, so a renamed or removed one no longer applies.
+  return builtIn && !userBangs.some((b) => overriddenShortcut(b) === builtIn.t)
+    ? builtIn
+    : undefined;
+}
 /** The main shortcut that `t` triggers: a user bang's own, or the built-in an alias belongs to. */
 export const mainShortcut = (t: string, userBangs = readUserBangs()) =>
-  userBangs.some((b) => b.t === t) ? t : (builtInBangFor(t)?.t ?? t);
+  findBang(t, userBangs)?.t ?? t;
 export const sameBang = (a: Bang, b: Bang) =>
   a.t === b.t &&
   a.s === b.s &&
   a.d === b.d &&
   (a.c ?? "") === (b.c ?? "") &&
   (a.sc ?? "") === (b.sc ?? "") &&
-  a.u === b.u;
+  a.u === b.u &&
+  aliasesOf(a).join(" ") === aliasesOf(b).join(" ");
 
 // Imports used to replace the whole catalog under LEGACY_CATALOG_KEY. Keep that behavior by turning
 // changed entries into overrides and disabling built-ins the imported catalog left out.
@@ -143,7 +164,7 @@ export const readDefaultShortcut = () =>
 
 /** User bangs first, then the built-ins they don't override. */
 export function activeBangs(userBangs = readUserBangs()): Bang[] {
-  const overridden = new Set(userBangs.map((b) => b.t));
+  const overridden = new Set(userBangs.map(overriddenShortcut));
   return [...userBangs, ...bangs.filter((b) => !overridden.has(b.t))];
 }
 
@@ -152,12 +173,9 @@ export function findEnabledBang(
   userBangs = readUserBangs(),
   disabled = readDisabledBangs(),
 ): Bang | undefined {
-  const userBang = userBangs.find((b) => b.t === t);
-  if (userBang) return disabled.has(t) ? undefined : userBang;
-  // Aliases follow their built-in, including its enabled state and any override.
-  const builtIn = builtInBangFor(t);
-  if (!builtIn || disabled.has(builtIn.t)) return undefined;
-  return userBangs.find((b) => b.t === builtIn.t) ?? builtIn;
+  // Aliases follow their bang's enabled state.
+  const bang = findBang(t, userBangs);
+  return bang && !disabled.has(bang.t) ? bang : undefined;
 }
 
 export type DefaultResolution = {
@@ -171,22 +189,28 @@ export function resolveDefaultBang(
 ): DefaultResolution {
   const requested = readDefaultShortcut();
   const bang = findEnabledBang(requested, userBangs, disabled);
-  const fallback = mainShortcut(FALLBACK_BANG, userBangs);
-  return bang
-    ? { bang, requested, usable: true }
-    : {
-        bang: userBangs.find((b) => b.t === fallback) ?? builtInBang(fallback)!,
-        requested,
-        usable: false,
-      };
+  if (bang) return { bang, requested, usable: true };
+  // Follow the fallback built-in even if the user renamed it or removed its alias.
+  const builtIn = builtInBangFor(FALLBACK_BANG)!;
+  return {
+    bang:
+      findBang(FALLBACK_BANG, userBangs) ??
+      userBangs.find((b) => overriddenShortcut(b) === builtIn.t) ??
+      builtIn,
+    requested,
+    usable: false,
+  };
 }
+
+const SHORTCUT = /^!?[^\s!]+$/;
+const normalizeShortcut = (t: string) => t.replace(/^!/, "").toLowerCase();
 
 export function validateBang(value: unknown): Bang {
   const b = value as Bang;
   if (
     !b ||
     typeof b.t !== "string" ||
-    !/^!?[^\s!]+$/.test(b.t) ||
+    !SHORTCUT.test(b.t) ||
     typeof b.u !== "string" ||
     !b.u.includes("{{{s}}}")
   )
@@ -216,13 +240,26 @@ export function validateBang(value: unknown): Bang {
   for (const key of ["s", "c", "sc"] as const)
     if (b[key] !== undefined && typeof b[key] !== "string")
       throw new Error("Site and categories must be text.");
+  if (
+    b.ts !== undefined &&
+    (!Array.isArray(b.ts) ||
+      b.ts.some((t) => typeof t !== "string" || !SHORTCUT.test(t)))
+  )
+    throw new Error("Use aliases without spaces.");
+  if (b.o !== undefined && (typeof b.o !== "string" || !builtInBang(b.o)))
+    throw new Error("The replaced built-in bang does not exist.");
+  const t = normalizeShortcut(b.t);
   return {
-    t: b.t.replace(/^!/, "").toLowerCase(),
+    t,
     s: b.s?.trim() || b.d,
     d: b.d,
     c: b.c ?? "",
     sc: b.sc ?? "",
     u: b.u,
+    ...(b.ts && {
+      ts: [...new Set(b.ts.map(normalizeShortcut))].filter((a) => a !== t),
+    }),
+    ...(b.o && b.o !== t && { o: b.o }),
   };
 }
 

@@ -1,10 +1,11 @@
-import { bangs as builtIns } from "./bang";
 import {
   DEFAULT_BANG_KEY,
   activeBangs,
+  aliasesOf,
   builtInBang,
   builtInBangFor,
   mainShortcut,
+  overriddenShortcut,
   exportBackup,
   parseBackup,
   readDefaultShortcut,
@@ -23,7 +24,6 @@ export function renderBuiltInBangs(
   app: HTMLElement,
   { filter = "", onChange = () => {} }: Options = {},
 ) {
-  const builtInShortcuts = new Set(builtIns.map((bang) => bang.t));
   let userBangs = readUserBangs();
   let bangs = activeBangs(userBangs);
   app.innerHTML = `
@@ -68,11 +68,17 @@ export function renderBuiltInBangs(
         <form id="add-form">
           <div class="panel-heading"><h2 id="add-heading">Add bang</h2><button type="button" id="close-panel" aria-label="Close panel">✕</button></div>
           <div class="panel-fields">
-          <label>Shortcut<input name="t" id="bang-shortcut" placeholder="gh" required pattern="!?[^\\s!]+" /></label>
+          <label>Shortcut<input name="t" id="bang-shortcut" placeholder="gh" required pattern="!?[^\\s!]+" /><small id="shortcut-note" hidden></small></label>
           <label>Site<input name="s" placeholder="GitHub" required /></label>
           <label>Domain<input name="d" placeholder="github.com" required /></label>
           <label>Category<input name="c" placeholder="Tech" /></label>
           <label class="full-field">Subcategory<input name="sc" placeholder="Programming" /></label>
+          <div class="full-field alias-field" role="group" aria-labelledby="alias-label">
+            <span id="alias-label">Aliases</span>
+            <ul id="alias-list"></ul>
+            <div class="alias-add"><input id="alias-input" placeholder="github" pattern="!?[^\\s!]+" aria-label="New alias" /><button type="button" id="add-alias">Add alias</button></div>
+            <small>Other shortcuts that open this bang.</small>
+          </div>
           <label class="full-field">Search URL<input name="u" type="url" placeholder="https://github.com/search?q={{{s}}}" required /><small>Use {{{s}}} where the search terms go.</small></label>
           </div>
           <p id="add-error" role="alert"></p>
@@ -86,13 +92,16 @@ export function renderBuiltInBangs(
   const form = app.querySelector<HTMLFormElement>("#add-form")!;
   const heading = app.querySelector<HTMLElement>("#add-heading")!;
   const saveButton = app.querySelector<HTMLButtonElement>("#save-bang")!;
-  const shortcutInput = app.querySelector<HTMLInputElement>("#bang-shortcut")!;
   const status = app.querySelector<HTMLElement>("#list-status")!;
   const error = app.querySelector<HTMLElement>("#add-error")!;
   const secondary = app.querySelector<HTMLElement>("#panel-secondary")!;
   const defaultButton = app.querySelector<HTMLButtonElement>("#default-panel")!;
   const removeButton = app.querySelector<HTMLButtonElement>("#remove-panel")!;
+  const shortcutNote = app.querySelector<HTMLElement>("#shortcut-note")!;
+  const aliasList = app.querySelector<HTMLUListElement>("#alias-list")!;
+  const aliasInput = app.querySelector<HTMLInputElement>("#alias-input")!;
   let editing: Bang | null = null;
+  let aliases: string[] = [];
   const plural = (count: number, noun: string) =>
     `${count} ${noun}${count === 1 ? "" : "s"}`;
 
@@ -115,19 +124,57 @@ export function renderBuiltInBangs(
     for (const key of ["t", "s", "d", "c", "sc", "u"] as const)
       (form.elements.namedItem(key) as HTMLInputElement).value =
         bang?.[key] ?? "";
-    // A built-in can only be overridden under its own shortcut; rename by adding a new bang instead.
-    shortcutInput.readOnly = !!bang && builtInShortcuts.has(bang.t);
+    aliases = bang ? [...aliasesOf(bang)] : [];
+    renderAliases();
+    const overridden = bang && overriddenShortcut(bang);
+    shortcutNote.hidden = !overridden || overridden === bang.t;
+    shortcutNote.textContent = `Replaces the built-in !${overridden}.`;
     secondary.hidden = !bang;
     if (bang) {
       updateDefaultButton(bang);
       const isUserBang = userBangs.includes(bang);
       removeButton.hidden = !isUserBang;
-      removeButton.textContent = builtInShortcuts.has(bang.t)
-        ? "Reset to built-in"
-        : "Delete";
+      removeButton.textContent = overridden ? "Reset to built-in" : "Delete";
     }
     dialog.showModal();
   }
+  function renderAliases() {
+    aliasList.replaceChildren(
+      ...aliases.map((alias) => {
+        const item = document.createElement("li");
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "✕";
+        remove.setAttribute("aria-label", `Remove alias !${alias}`);
+        remove.addEventListener("click", () => {
+          aliases = aliases.filter((a) => a !== alias);
+          renderAliases();
+          aliasInput.focus();
+        });
+        item.append(`!${alias}`, remove);
+        return item;
+      }),
+    );
+  }
+  function addAlias() {
+    const alias = aliasInput.value.trim().replace(/^!/, "").toLowerCase();
+    if (!alias) return;
+    if (!aliasInput.checkValidity()) {
+      error.textContent = "Use an alias without spaces or !.";
+      return;
+    }
+    error.textContent = "";
+    if (!aliases.includes(alias)) aliases.push(alias);
+    aliasInput.value = "";
+    renderAliases();
+  }
+  app.querySelector("#add-alias")!.addEventListener("click", addAlias);
+  aliasInput.addEventListener("keydown", (event) => {
+    // Enter adds the alias instead of submitting the whole form.
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    addAlias();
+  });
   function updateDefaultButton(bang: Bang) {
     const isDefault = mainShortcut(readDefaultShortcut(), userBangs) === bang.t;
     defaultButton.disabled = isDefault;
@@ -153,24 +200,45 @@ export function renderBuiltInBangs(
       .addEventListener("click", () => dialog.close());
   form.addEventListener("submit", (event) => {
     event.preventDefault();
+    error.textContent = "";
     try {
-      const entry = validateBang(Object.fromEntries(new FormData(form)));
+      // Count an alias typed but not yet added.
+      addAlias();
+      if (error.textContent) return;
+      const own = editing ? overriddenShortcut(editing) : undefined;
+      const entry = validateBang({
+        ...Object.fromEntries(new FormData(form)),
+        ts: aliases,
+        ...(own && { o: own }),
+      });
       const original = editing?.t;
-      if (entry.t !== original && userBangs.some((b) => b.t === entry.t))
+      const shortcuts = [entry.t, ...aliasesOf(entry)];
+      const rest = userBangs.filter((b) => b.t !== original);
+      const taken = shortcuts.find((t) =>
+        rest.some((b) => b.t === t || aliasesOf(b).includes(t)),
+      );
+      if (taken)
         throw new Error(
-          "You already have a bang with this shortcut. Edit it instead.",
+          `You already have a bang using !${taken}. Edit it instead.`,
         );
-      const builtIn = builtInBang(entry.t);
-      const triggered = builtInBangFor(entry.t);
+      const previous = editing ? [editing.t, ...aliasesOf(editing)] : [];
+      const clashes = shortcuts.flatMap((t) => {
+        const triggered = builtInBangFor(t);
+        return triggered && triggered.t !== own && !previous.includes(t)
+          ? [`!${t} (${triggered.s})`]
+          : [];
+      });
       if (
-        !editing &&
-        triggered &&
+        clashes.length &&
         !window.confirm(
-          `!${entry.t} is a built-in bang for ${triggered.s}. Override it with your version?`,
+          `${clashes.join(", ")} already ${clashes.length === 1 ? "opens a built-in bang" : "open built-in bangs"}. Use ${clashes.length === 1 ? "it" : "them"} for your bang instead?`,
         )
       )
         return;
-      const rest = userBangs.filter((b) => b.t !== entry.t && b.t !== original);
+      const builtIn = builtInBang(overriddenShortcut(entry) ?? "");
+      // Aliases left as they are keep following the built-in's.
+      if (builtIn && entry.ts?.join(" ") === (builtIn.ts ?? []).join(" "))
+        delete entry.ts;
       // Saving a built-in unchanged drops the override instead of storing a copy.
       const list =
         builtIn && sameBang(entry, builtIn) ? rest : [entry, ...rest];
@@ -178,6 +246,7 @@ export function renderBuiltInBangs(
         disabled.add(entry.t);
         saveSelection();
       }
+      if (original) keepDefault(original, entry.t, list);
       dialog.close();
       input.value = entry.t;
       saveUserBangs(
@@ -189,6 +258,15 @@ export function renderBuiltInBangs(
     }
   });
 
+  /** Keeps a bang as the default search engine when its shortcut or aliases change. */
+  function keepDefault(from: string, to: string, list: Bang[]) {
+    const requested = readDefaultShortcut();
+    if (
+      mainShortcut(requested, userBangs) === from &&
+      mainShortcut(requested, list) !== to
+    )
+      localStorage.setItem(DEFAULT_BANG_KEY, to);
+  }
   function useAsDefault(bang: Bang) {
     disabled.delete(bang.t);
     saveSelection();
@@ -198,16 +276,21 @@ export function renderBuiltInBangs(
     onChange();
   }
   function removeUserBang(bang: Bang) {
-    const builtIn = builtInBang(bang.t);
+    const builtIn = builtInBang(overriddenShortcut(bang) ?? "");
     const question = builtIn
-      ? `Reset !${bang.t} to the built-in ${builtIn.s} bang?`
+      ? `Reset !${bang.t} to the built-in ${builtIn.s} bang (!${builtIn.t})?`
       : `Delete !${bang.t}?`;
     if (!window.confirm(question)) return false;
-    if (!builtIn && disabled.delete(bang.t)) saveSelection();
+    if (builtIn?.t !== bang.t && disabled.delete(bang.t)) {
+      if (builtIn) disabled.add(builtIn.t);
+      saveSelection();
+    }
+    const list = userBangs.filter((b) => b.t !== bang.t);
+    if (builtIn) keepDefault(bang.t, builtIn.t, list);
     saveUserBangs(
-      userBangs.filter((b) => b.t !== bang.t),
+      list,
       builtIn
-        ? `Reset !${bang.t} to the built-in bang.`
+        ? `Reset !${bang.t} to the built-in !${builtIn.t}.`
         : `Deleted !${bang.t}.`,
     );
     return true;
@@ -249,7 +332,7 @@ export function renderBuiltInBangs(
       const imported = new Set(backup.bangs.map((b) => b.t));
       const list = [
         ...backup.bangs.filter((b) => {
-          const builtIn = builtInBang(b.t);
+          const builtIn = builtInBang(overriddenShortcut(b) ?? "");
           return !builtIn || !sameBang(b, builtIn);
         }),
         ...userBangs.filter((b) => !imported.has(b.t)),
@@ -349,7 +432,7 @@ export function renderBuiltInBangs(
       const badges = [
         ...(defaultShortcut === bang.t ? ["default"] : []),
         ...(userBangs.includes(bang)
-          ? [builtInShortcuts.has(bang.t) ? "modified" : "custom"]
+          ? [overriddenShortcut(bang) ? "modified" : "custom"]
           : []),
       ];
       for (const label of badges) {
@@ -358,8 +441,7 @@ export function renderBuiltInBangs(
         badge.textContent = label;
         shortcut.append(" ", badge);
       }
-      // Built-in aliases also apply to a user override of that built-in.
-      const aliases = bang.ts ?? builtInBang(bang.t)?.ts ?? [];
+      const aliases = aliasesOf(bang);
       if (aliases.length) {
         const list = document.createElement("small");
         list.className = "bang-aliases";
@@ -398,7 +480,7 @@ export function renderBuiltInBangs(
     filtered = bangs.filter((bang) =>
       [
         bang.t,
-        ...(bang.ts ?? builtInBang(bang.t)?.ts ?? []),
+        ...aliasesOf(bang),
         bang.s,
         bang.d,
         bang.c,

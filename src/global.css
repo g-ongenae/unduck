@@ -566,6 +566,42 @@ textarea {
 .full-field {
   grid-column: 1 / -1;
 }
+.alias-field > span {
+  font-size: 14px;
+  font-weight: 600;
+}
+#alias-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+#alias-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border-radius: 999px;
+  background: #eee;
+  font-family: monospace;
+  font-size: 13px;
+}
+#alias-list button {
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+}
+.alias-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.panel-fields .alias-add input {
+  margin-top: 0;
+}
 .panel-actions {
   justify-content: flex-end;
   margin-top: 24px;
@@ -605,6 +641,9 @@ textarea {
   #default-status,
   .panel-fields small {
     color: #aaa;
+  }
+  #alias-list li {
+    background: #333;
   }
 }
 
