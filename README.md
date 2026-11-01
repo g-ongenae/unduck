@@ -6,6 +6,18 @@ DuckDuckGo's bang redirects are too slow. Add the following URL as a custom sear
 https://g-ongenae.github.io/unduck/?q=%s
 ```
 
+## Firefox
+
+Visit https://g-ongenae.github.io/unduck/, right-click the address bar, and choose
+**Add “Unduck”** to install the site's OpenSearch definition with its magnifying-glass icon.
+If you already added Unduck manually and see a different icon, remove that entry in
+`about:preferences#search`, then add it again from the site. Firefox caches search-engine
+icons separately from tab icons. Select Unduck as your default search engine afterward
+if desired.
+
+The OpenSearch definition uses the deployed GitHub Pages URL. If you host a fork
+elsewhere, update the URLs in `public/opensearch.xml`.
+
 ## How is it that much faster?
 
 DuckDuckGo does their redirects server side. Their DNS is...not always great. Result is that it often takes ages.
