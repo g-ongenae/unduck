@@ -209,10 +209,10 @@ textarea {
   .settings-actions button { color: #ddd; }
 }
 
-.bangs-page { max-width: 1400px; min-height: 100vh; margin: 0 auto; padding: 32px 20px; }
-.bangs-page h1 { margin: 24px 0 12px; }
-.bangs-page > p { margin-bottom: 20px; }
-.bangs-page label { display: block; font-weight: 600; margin-bottom: 6px; }
+.bangs-section { margin-top: 40px; padding-top: 32px; border-top: 1px solid #aaa; }
+.bangs-section h2 { margin-bottom: 12px; }
+.bangs-section > p { margin-bottom: 20px; }
+.bangs-section label { display: block; font-weight: 600; margin-bottom: 6px; }
 #bang-filter { width: 100%; padding: 10px 12px; border: 1px solid #aaa; border-radius: 4px; }
 #bang-filter { margin-bottom: 12px; }
 #bang-count { margin: 12px 0; color: #666; }
@@ -236,7 +236,7 @@ textarea {
 .bang-sort { color: inherit; font-weight: inherit; text-align: left; padding: 0; }
 .bang-sort:hover { text-decoration: underline; }
 .bang-sort:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
-.bangs-page .bang-select-all { display: flex; align-items: center; gap: 8px; margin: 0; }
+.bangs-section .bang-select-all { display: flex; align-items: center; gap: 8px; margin: 0; }
 .bang-table td:last-child { min-width: auto; text-align: center; }
 
 .settings-link {
@@ -255,8 +255,53 @@ textarea {
 .settings-link:hover { background: #f0f0f0; }
 .settings-link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .settings-page { justify-content: flex-start; }
-.settings-page .content-container { width: 100%; text-align: left; }
+.settings-page .content-container { width: 100%; max-width: 1400px; text-align: left; }
+#built-in-bangs { scroll-margin-top: 24px; }
 .settings-page h1 { margin-top: 24px; }
 @media (prefers-color-scheme: dark) {
   .settings-link:hover { background: #222; }
 }
+
+/* Compact configuration and table toolbar. */
+.settings-page { padding: 24px 16px; }
+.settings-page h1 { margin: 16px 0 20px; font-size: 28px; }
+.default-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.default-row label { font-weight: 600; }
+.default-row input { width: 90px; min-width: 0; }
+.settings-page button, .default-row input, .panel-fields input { border: 1px solid #bbb; border-radius: 5px; padding: 6px 10px; color: inherit; background: transparent; }
+.settings-page button:hover { background: #eee; }
+#default-status { font-size: 13px; color: #666; }
+.bangs-section { margin-top: 20px; padding-top: 16px; }
+.bang-toolbar, .bang-actions, .panel-heading, .panel-actions { display: flex; align-items: center; gap: 8px; }
+.bang-toolbar { justify-content: space-between; margin-bottom: 12px; }
+.bang-toolbar h2 { margin: 0; font-size: 22px; }
+.settings-page .primary { background: #222; border-color: #222; color: #fff; }
+.settings-page .primary:hover { background: #444; }
+.bangs-section > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#bang-filter { margin: 0; padding: 7px 10px; }
+#bang-count { margin: 8px 0; font-size: 13px; }
+#list-status:empty, #add-error:empty { display: none; }
+#list-status { font-size: 13px; margin-bottom: 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.settings-page .bang-sort { border: 0; padding: 0; border-radius: 0; }
+.settings-page .bang-sort:hover { background: transparent; }
+#bang-dialog { position: fixed; inset: 0 0 0 auto; height: 100%; max-height: 100%; width: min(480px, 100%); max-width: 100%; margin: 0; padding: 24px; border: 0; border-left: 1px solid #ddd; color: inherit; background: #fff; overflow-y: auto; }
+#bang-dialog::backdrop { background: rgb(0 0 0 / 25%); }
+.panel-heading { justify-content: space-between; margin-bottom: 24px; }
+.panel-heading h2 { margin: 0; }
+.panel-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.panel-fields label { font-size: 14px; font-weight: 600; }
+.panel-fields input { display: block; width: 100%; margin-top: 6px; font-weight: 400; }
+.panel-fields small { display: block; margin-top: 6px; color: #666; font-weight: 400; }
+.full-field { grid-column: 1 / -1; }
+.panel-actions { justify-content: flex-end; margin-top: 24px; }
+#add-error { color: #b42318; margin-top: 16px; font-size: 14px; }
+@media (max-width: 480px) { .default-row { gap: 8px; } .default-row label { font-size: 14px; } .bang-actions { gap: 5px; } .bang-actions button { padding: 6px 8px; font-size: 14px; } }
+@media (prefers-color-scheme: dark) {
+  #bang-dialog { background: #191919; border-color: #444; }
+  .settings-page button:hover { background: #333; }
+  .settings-page .primary { background: #ddd; color: #111; }
+  #default-status, .panel-fields small { color: #aaa; }
+}
+
+.bang-select-all { white-space: nowrap; }

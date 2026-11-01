@@ -1,22 +1,7 @@
 import { bangs } from "./bang";
+import { activeBangs } from "./bang-store";
 import "./global.css";
-import { readDisabledBangs, renderBangsPage } from "./bangs-page";
-
-type CustomBang = { t: string; u: string; d: string };
-const CUSTOM_KEY = "custom-bangs";
-
-function readCustomBangs(): CustomBang[] | null {
-  try {
-    const saved = localStorage.getItem(CUSTOM_KEY);
-    if (saved === null) return null;
-    const parsed: unknown = JSON.parse(saved);
-    if (!Array.isArray(parsed)) return null;
-    return parsed.filter((b): b is CustomBang =>
-      typeof b?.t === "string" && typeof b?.u === "string" && typeof b?.d === "string");
-  } catch {
-    return null;
-  }
-}
+import { readDisabledBangs, renderBuiltInBangs } from "./bangs-page";
 
 function noSearchDefaultPageRender() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -64,36 +49,26 @@ function renderSettingsPage() {
       <div class="content-container">
         <a href="./">← Back to home</a>
         <h1>Settings</h1>
-        <section class="settings">
-          <h2>Default search engine</h2>
-          <p>Choose a bang shortcut for searches without a bang. This setting is saved in this browser.</p>
-          <label for="default-bang">Default bang</label>
-          <input id="default-bang" type="text" placeholder="ddg" />
-          <div class="settings-actions"><button type="button" id="save-default">Save default</button></div>
-          <p id="default-status" role="status"></p>
-        </section>
-        <section class="settings">
-          <h2>Your bangs</h2>
-          <p><a href="?page=bangs">Browse built-in bangs</a></p>
-          <p>Use your own list instead of the built-in bangs. Enter one shortcut and search URL per line, separated by a space. Use <code>{{{s}}}</code> where the search terms go.</p>
-          <label for="custom-bangs">Custom bangs</label>
-          <textarea id="custom-bangs" rows="5" placeholder="gh https://github.com/search?q={{{s}}}"></textarea>
-          <div class="settings-actions">
-            <button type="button" id="save-bangs">Save custom list</button>
-            <button type="button" id="reset-bangs">Use built-in bangs</button>
-          </div>
-          <p id="bang-status" role="status"></p>
-        </section>
+        <form id="default-form" class="default-row">
+          <label for="default-bang">Default search engine</label>
+          <input id="default-bang" type="text" placeholder="ddg" aria-describedby="default-status" />
+          <button type="submit">Save</button>
+          <span id="default-status" role="status"></span>
+        </form>
+        <div id="built-in-bangs"></div>
       </div>
     </main>
   `;
 
+  renderBuiltInBangs(app.querySelector<HTMLElement>("#built-in-bangs")!);
+
   const defaultInput = app.querySelector<HTMLInputElement>("#default-bang")!;
   const defaultStatus = app.querySelector<HTMLParagraphElement>("#default-status")!;
   defaultInput.value = localStorage.getItem("default-bang") ?? "ddg";
-  app.querySelector<HTMLButtonElement>("#save-default")!.addEventListener("click", () => {
+  app.querySelector<HTMLFormElement>("#default-form")!.addEventListener("submit", (event) => {
+    event.preventDefault();
     const shortcut = defaultInput.value.trim().replace(/^!/, "").toLowerCase();
-    const available = [...(readCustomBangs() ?? []), ...bangs];
+    const available = activeBangs();
     if (!available.some((bang) => bang.t === shortcut)) {
       defaultStatus.textContent = "Enter a valid built-in or custom bang shortcut, such as ddg or g.";
       return;
@@ -103,42 +78,10 @@ function renderSettingsPage() {
     defaultStatus.textContent = "Default search engine saved on this browser.";
   });
 
-  const editor = app.querySelector<HTMLTextAreaElement>("#custom-bangs")!;
-  const status = app.querySelector<HTMLParagraphElement>("#bang-status")!;
-  const custom = readCustomBangs();
-  editor.value = custom?.map((b) => `${b.t} ${b.u}`).join("\n") ?? "";
-  status.textContent = custom ? "Using your custom list on this browser." : "Using built-in bangs.";
-  app.querySelector<HTMLButtonElement>("#save-bangs")!.addEventListener("click", () => {
-    const entries: CustomBang[] = [];
-    const seen = new Set<string>();
-    for (const [index, line] of editor.value.split("\n").entries()) {
-      if (!line.trim()) continue;
-      const match = line.trim().match(/^!?([^\s!]+)\s+(\S+)$/);
-      try {
-        if (!match || !match[2].includes("{{{s}}}")) throw new Error();
-        const url = new URL(match[2]);
-        if (!["http:", "https:"].includes(url.protocol)) throw new Error();
-        const t = match[1].toLowerCase();
-        if (seen.has(t)) throw new Error();
-        seen.add(t);
-        entries.push({ t, u: match[2], d: url.host });
-      } catch {
-        status.textContent = `Check line ${index + 1}: use a unique shortcut and an HTTP(S) URL containing {{{s}}}.`;
-        return;
-      }
-    }
-    localStorage.setItem(CUSTOM_KEY, JSON.stringify(entries));
-    status.textContent = "Custom list saved on this browser.";
-  });
-  app.querySelector<HTMLButtonElement>("#reset-bangs")!.addEventListener("click", () => {
-    localStorage.removeItem(CUSTOM_KEY);
-    status.textContent = "Using built-in bangs. Your editor contents have not been saved.";
-  });
-
 }
 
 const LS_DEFAULT_BANG = localStorage.getItem("default-bang") ?? "ddg";
-const defaultBang = [...(readCustomBangs() ?? []), ...bangs].find((b) => b.t === LS_DEFAULT_BANG)
+const defaultBang = activeBangs().find((b) => b.t === LS_DEFAULT_BANG)
   ?? bangs.find((b) => b.t === "ddg");
 
 function getBangredirectUrl() {
@@ -152,9 +95,8 @@ function getBangredirectUrl() {
   const match = query.match(/!(\S+)/i);
 
   const bangCandidate = match?.[1]?.toLowerCase();
-  const customBangs = readCustomBangs();
   const disabled = readDisabledBangs();
-  const selectedBang = (customBangs ?? bangs.filter((b) => !disabled.has(b.t))).find((b) => b.t === bangCandidate) ?? defaultBang;
+  const selectedBang = activeBangs().filter((b) => !disabled.has(b.t)).find((b) => b.t === bangCandidate) ?? defaultBang;
 
   // Remove the first bang from the query
   const cleanQuery = query.replace(/!\S+\s*/i, "").trim();
@@ -185,7 +127,12 @@ const page = new URLSearchParams(window.location.search).get("page");
 if (page === "settings") {
   renderSettingsPage();
 } else if (page === "bangs") {
-  renderBangsPage();
+  const settingsUrl = new URL(window.location.href);
+  settingsUrl.searchParams.set("page", "settings");
+  settingsUrl.hash = "built-in-bangs";
+  window.history.replaceState(null, "", settingsUrl);
+  renderSettingsPage();
+  document.getElementById("built-in-bangs")!.scrollIntoView();
 } else {
   doRedirect();
 }
