@@ -10,11 +10,13 @@ export type Bang = {
   ts?: string[];
   x?: string;
 };
+/** Holds whichever of `enabled` or `disabled` is shorter; bangs it doesn't list take the other state. */
 export type Backup = {
   version: 1;
   defaultBang: string;
   bangs: Bang[];
-  disabled: string[];
+  enabled?: string[];
+  disabled?: string[];
 };
 
 export const USER_BANGS_KEY = "added-bangs";
@@ -124,9 +126,22 @@ function disableNewBuiltIns(disabled: Set<string>) {
   if (changed) writeDisabledBangs(disabled);
 }
 
+// Shortcuts that are no longer a bang, such as built-ins a catalog refresh removed or turned into
+// aliases, would otherwise linger forever and silently disable a user bang later added under them.
+function dropStaleShortcuts(disabled: Set<string>) {
+  const userShortcuts = new Set(
+    (readList(USER_BANGS_KEY) ?? []).map((b) => b.t),
+  );
+  let changed = false;
+  for (const t of disabled)
+    if (!builtInBang(t) && !userShortcuts.has(t)) changed = disabled.delete(t);
+  if (changed) writeDisabledBangs(disabled);
+}
+
 export function readDisabledBangs(): Set<string> {
   const disabled = new Set(readStrings(DISABLED_BANGS_KEY) ?? []);
   disableNewBuiltIns(disabled);
+  dropStaleShortcuts(disabled);
   return disabled;
 }
 export function writeDisabledBangs(disabled: Set<string>) {
@@ -227,11 +242,17 @@ export function validateBang(value: unknown): Bang {
 }
 
 export function exportBackup(): Backup {
+  const userBangs = readUserBangs();
+  const disabled = readDisabledBangs();
+  const shortcuts = activeBangs(userBangs).map((b) => b.t);
+  const enabled = shortcuts.filter((t) => !disabled.has(t));
   return {
     version: 1,
     defaultBang: readDefaultShortcut(),
-    bangs: readUserBangs(),
-    disabled: [...readDisabledBangs()],
+    bangs: userBangs,
+    ...(enabled.length < disabled.size
+      ? { enabled }
+      : { disabled: shortcuts.filter((t) => disabled.has(t)) }),
   };
 }
 
@@ -260,10 +281,19 @@ export function parseBackup(data: unknown): {
   if (new Set(entries.map((b) => b.t)).size !== entries.length)
     throw new Error("The file contains duplicate shortcuts.");
   if (!isBackup) return { bangs: entries };
-  const { disabled, defaultBang } = data as Backup;
-  if (!Array.isArray(disabled) || disabled.some((t) => typeof t !== "string"))
-    throw new Error("The backup has an invalid list of disabled bangs.");
+  const { enabled, disabled, defaultBang } = data as Backup;
+  const list = enabled ?? disabled;
+  if (!Array.isArray(list) || list.some((t) => typeof t !== "string"))
+    throw new Error("The backup has an invalid list of enabled bangs.");
   if (typeof defaultBang !== "string" || !defaultBang)
     throw new Error("The backup has an invalid default search engine.");
-  return { bangs: entries, disabled, defaultBang };
+  if (!enabled) return { bangs: entries, disabled: list, defaultBang };
+  const kept = new Set(list);
+  return {
+    bangs: entries,
+    disabled: activeBangs(entries)
+      .map((b) => b.t)
+      .filter((t) => !kept.has(t)),
+    defaultBang,
+  };
 }

@@ -275,7 +275,10 @@ export function renderBuiltInBangs(
     link.download = "unduck-backup.json";
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    status.textContent = `Exported ${plural(backup.bangs.length, "custom bang")}, ${plural(backup.disabled.length, "disabled bang")} and your default search engine.`;
+    const selection = backup.enabled
+      ? plural(backup.enabled.length, "enabled bang")
+      : plural(backup.disabled!.length, "disabled bang");
+    status.textContent = `Exported ${plural(backup.bangs.length, "custom bang")}, ${selection} and your default search engine.`;
   });
 
   const input = app.querySelector<HTMLInputElement>("#bang-filter")!;
