@@ -23311,7 +23311,7 @@ export const bangs = [
     s: "DuckDuckGo",
     sc: "Search (DDG)",
     t: "ddg",
-    u: "http://duckduckgo.com/?q={{{s}}}",
+    u: "https://duckduckgo.com/?q={{{s}}}",
   },
   {
     c: "Online Services",
