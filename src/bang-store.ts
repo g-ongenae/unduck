@@ -20,6 +20,8 @@ export type Backup = {
 export const USER_BANGS_KEY = "added-bangs";
 const LEGACY_CATALOG_KEY = "custom-bangs";
 export const DISABLED_BANGS_KEY = "disabled-built-in-bangs";
+/** Built-in shortcuts at the time the user last saved a partial selection. */
+const KNOWN_BUILT_INS_KEY = "known-built-in-bangs";
 export const DEFAULT_BANG_KEY = "default-bang";
 export const FALLBACK_BANG = "ddg";
 
@@ -93,16 +95,48 @@ export function readUserBangs(): Bang[] {
 export function writeUserBangs(list: Bang[]) {
   localStorage.setItem(USER_BANGS_KEY, JSON.stringify(list));
 }
+function readStrings(key: string): string[] | null {
+  const value = readJson(key);
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : null;
+}
+
+// When the user picked a subset of bangs, built-ins added by a later catalog refresh start disabled
+// instead of silently joining their selection. A built-in renamed to one of its former aliases keeps
+// that alias's state.
+function disableNewBuiltIns(disabled: Set<string>) {
+  if (!disabled.size) return;
+  const stored = readStrings(KNOWN_BUILT_INS_KEY);
+  if (!stored) {
+    writeDisabledBangs(disabled);
+    return;
+  }
+  const known = new Set(stored);
+  let changed = stored.length !== bangs.length;
+  for (const b of bangs) {
+    if (known.has(b.t)) continue;
+    changed = true;
+    const former = (b.ts ?? []).filter((t) => known.has(t));
+    if (!former.length || former.some((t) => disabled.has(t)))
+      disabled.add(b.t);
+  }
+  if (changed) writeDisabledBangs(disabled);
+}
+
 export function readDisabledBangs(): Set<string> {
-  const value = readJson(DISABLED_BANGS_KEY);
-  return new Set(
-    Array.isArray(value)
-      ? value.filter((item): item is string => typeof item === "string")
-      : [],
-  );
+  const disabled = new Set(readStrings(DISABLED_BANGS_KEY) ?? []);
+  disableNewBuiltIns(disabled);
+  return disabled;
 }
 export function writeDisabledBangs(disabled: Set<string>) {
   localStorage.setItem(DISABLED_BANGS_KEY, JSON.stringify([...disabled]));
+  if (disabled.size)
+    localStorage.setItem(
+      KNOWN_BUILT_INS_KEY,
+      JSON.stringify(bangs.map((b) => b.t)),
+    );
+  else localStorage.removeItem(KNOWN_BUILT_INS_KEY);
 }
 export const readDefaultShortcut = () =>
   localStorage.getItem(DEFAULT_BANG_KEY) ?? FALLBACK_BANG;
