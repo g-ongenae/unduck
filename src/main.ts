@@ -36,6 +36,14 @@ function noSearchDefaultPageRender() {
           </button>
         </div>
         <section class="settings">
+          <h2>Default search engine</h2>
+          <p>Choose a bang shortcut for searches without a bang. This setting is saved in this browser.</p>
+          <label for="default-bang">Default bang</label>
+          <input id="default-bang" type="text" placeholder="ddg" />
+          <div class="settings-actions"><button type="button" id="save-default">Save default</button></div>
+          <p id="default-status" role="status"></p>
+        </section>
+        <section class="settings">
           <h2>Your bangs</h2>
           <p>Use your own list instead of the built-in bangs. Enter one shortcut and search URL per line, separated by a space. Use <code>{{{s}}}</code> where the search terms go.</p>
           <label for="custom-bangs">Custom bangs</label>
@@ -56,6 +64,21 @@ function noSearchDefaultPageRender() {
       </footer>
     </div>
   `;
+
+  const defaultInput = app.querySelector<HTMLInputElement>("#default-bang")!;
+  const defaultStatus = app.querySelector<HTMLParagraphElement>("#default-status")!;
+  defaultInput.value = localStorage.getItem("default-bang") ?? "ddg";
+  app.querySelector<HTMLButtonElement>("#save-default")!.addEventListener("click", () => {
+    const shortcut = defaultInput.value.trim().replace(/^!/, "").toLowerCase();
+    const available = [...(readCustomBangs() ?? []), ...bangs];
+    if (!available.some((bang) => bang.t === shortcut)) {
+      defaultStatus.textContent = "Enter a valid built-in or custom bang shortcut, such as ddg or g.";
+      return;
+    }
+    localStorage.setItem("default-bang", shortcut);
+    defaultInput.value = shortcut;
+    defaultStatus.textContent = "Default search engine saved on this browser.";
+  });
 
   const editor = app.querySelector<HTMLTextAreaElement>("#custom-bangs")!;
   const status = app.querySelector<HTMLParagraphElement>("#bang-status")!;
@@ -104,7 +127,8 @@ function noSearchDefaultPageRender() {
 }
 
 const LS_DEFAULT_BANG = localStorage.getItem("default-bang") ?? "ddg";
-const defaultBang = bangs.find((b) => b.t === LS_DEFAULT_BANG);
+const defaultBang = [...(readCustomBangs() ?? []), ...bangs].find((b) => b.t === LS_DEFAULT_BANG)
+  ?? bangs.find((b) => b.t === "ddg");
 
 function getBangredirectUrl() {
   const url = new URL(window.location.href);
