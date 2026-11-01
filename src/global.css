@@ -208,3 +208,26 @@ textarea {
   .settings input, .settings textarea { background: #191919; color: #fff; border-color: #666; }
   .settings-actions button { color: #ddd; }
 }
+
+.bangs-page { max-width: 1400px; min-height: 100vh; margin: 0 auto; padding: 32px 20px; }
+.bangs-page h1 { margin: 24px 0 12px; }
+.bangs-page > p { margin-bottom: 20px; }
+.bangs-page label { display: block; font-weight: 600; margin-bottom: 6px; }
+#bang-filter { width: 100%; padding: 10px 12px; border: 1px solid #aaa; border-radius: 4px; }
+#bang-count { margin: 12px 0; color: #666; }
+.bang-table-scroll { overflow-x: auto; border: 1px solid #ddd; border-radius: 4px; }
+.bang-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+.bang-table caption { text-align: left; padding: 12px; font-weight: 600; }
+.bang-table th, .bang-table td { padding: 10px 12px; border-top: 1px solid #ddd; vertical-align: top; }
+.bang-table th { background: #f5f5f5; }
+.bang-table td { min-width: 120px; max-width: 360px; overflow-wrap: anywhere; }
+.bang-table td:first-child, .bang-table td:last-child { font-family: monospace; }
+.bang-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 20px; }
+.bang-pagination button { padding: 6px 12px; border: 1px solid #888; border-radius: 4px; color: inherit; }
+.bang-pagination button:disabled { opacity: .4; cursor: default; }
+@media (prefers-color-scheme: dark) {
+  #bang-filter { background: #191919; color: #fff; border-color: #666; }
+  #bang-count { color: #aaa; }
+  .bang-table-scroll, .bang-table th, .bang-table td { border-color: #3d3d3d; }
+  .bang-table th { background: #222; }
+}

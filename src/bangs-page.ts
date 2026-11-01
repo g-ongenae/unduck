@@ -1,0 +1,76 @@
+import { bangs } from "./bang";
+
+export function renderBangsPage() {
+  document.title = "Built-in bangs | Und*ck";
+  const app = document.querySelector<HTMLDivElement>("#app")!;
+  app.innerHTML = `
+    <main class="bangs-page">
+      <a href="./">← Back to settings</a>
+      <h1>Built-in bangs</h1>
+      <p>Browse the default list included with Und*ck. Use a shortcut such as <code>!gh</code> before your search terms. Search URLs use <code>{{{s}}}</code> for those terms.</p>
+      <label for="bang-filter">Search bangs</label>
+      <input id="bang-filter" type="search" placeholder="Shortcut, site, domain, category or URL" />
+      <p id="bang-count" role="status" aria-live="polite"></p>
+      <div class="bang-table-scroll" role="region" aria-label="Built-in bangs table" tabindex="0">
+        <table class="bang-table">
+          <caption>Default bang shortcuts and search destinations</caption>
+          <thead><tr><th scope="col">Shortcut</th><th scope="col">Site</th><th scope="col">Domain</th><th scope="col">Category</th><th scope="col">Subcategory</th><th scope="col">Search URL</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <nav class="bang-pagination" aria-label="Table pages">
+        <button type="button" id="bang-previous">Previous</button>
+        <span id="bang-page"></span>
+        <button type="button" id="bang-next">Next</button>
+      </nav>
+    </main>`;
+
+  const input = app.querySelector<HTMLInputElement>("#bang-filter")!;
+  const body = app.querySelector<HTMLTableSectionElement>("tbody")!;
+  const count = app.querySelector<HTMLParagraphElement>("#bang-count")!;
+  const pageLabel = app.querySelector<HTMLSpanElement>("#bang-page")!;
+  const previous = app.querySelector<HTMLButtonElement>("#bang-previous")!;
+  const next = app.querySelector<HTMLButtonElement>("#bang-next")!;
+  const pageSize = 100;
+  let page = 0;
+  let filtered = bangs;
+
+  function renderRows() {
+    const start = page * pageSize;
+    const fragment = document.createDocumentFragment();
+    for (const bang of filtered.slice(start, start + pageSize)) {
+      const row = document.createElement("tr");
+      for (const value of [`!${bang.t}`, bang.s, bang.d, bang.c ?? "—", bang.sc ?? "—", bang.u]) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.append(cell);
+      }
+      fragment.append(row);
+    }
+    if (!filtered.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 6;
+      cell.textContent = "No bangs match your search.";
+      row.append(cell);
+      fragment.append(row);
+    }
+    body.replaceChildren(fragment);
+    count.textContent = `${filtered.length ? start + 1 : 0}–${Math.min(start + pageSize, filtered.length)} of ${filtered.length.toLocaleString()} bangs (${bangs.length.toLocaleString()} built-in total)`;
+    pageLabel.textContent = `Page ${page + 1} of ${Math.max(1, Math.ceil(filtered.length / pageSize))}`;
+    previous.disabled = page === 0;
+    next.disabled = start + pageSize >= filtered.length;
+  }
+
+  input.addEventListener("input", () => {
+    const term = input.value.trim().toLowerCase().replace(/^!/, "");
+    filtered = bangs.filter((bang) =>
+      [bang.t, bang.s, bang.d, bang.c, bang.sc, bang.u].some((value) => value?.toLowerCase().includes(term)),
+    );
+    page = 0;
+    renderRows();
+  });
+  previous.addEventListener("click", () => { page--; renderRows(); });
+  next.addEventListener("click", () => { page++; renderRows(); });
+  renderRows();
+}
