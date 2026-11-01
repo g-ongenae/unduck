@@ -52,6 +52,10 @@ export function normalizeBangs(data) {
   return bangs;
 }
 
+// Engines parse JSON much faster than an equivalent object literal.
+const jsonModule = (name, value) =>
+  `export const ${name} = JSON.parse(${JSON.stringify(JSON.stringify(value))});`;
+
 export function kagiBangs() {
   const id = "virtual:kagi-bangs";
   let catalog;
@@ -72,7 +76,7 @@ export function kagiBangs() {
           );
         return normalizeBangs(await response.json());
       })();
-      return `export const bangs = ${JSON.stringify(await catalog)};`;
+      return jsonModule("bangs", await catalog);
     },
   };
 }
