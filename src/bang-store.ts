@@ -6,6 +6,9 @@ export type Bang = {
   c?: string;
   sc?: string;
   u: string;
+  /** Aliases of a built-in shortcut. */
+  ts?: string[];
+  x?: string;
 };
 export type Backup = {
   version: 1;
@@ -40,8 +43,20 @@ function readList(key: string): Bang[] | null {
     .map((b) => ({ ...b, s: b.s ?? b.d }));
 }
 
-export const builtInBang = (t: string): Bang | undefined =>
-  bangs.find((b) => b.t === t);
+const builtInsByShortcut = new Map(
+  bangs.flatMap((b) => [b.t, ...(b.ts ?? [])].map((t) => [t, b] as const)),
+);
+/** The built-in bang whose main shortcut is `t`. */
+export const builtInBang = (t: string): Bang | undefined => {
+  const bang = builtInsByShortcut.get(t);
+  return bang?.t === t ? bang : undefined;
+};
+/** The built-in bang that `t` triggers, either as its main shortcut or as an alias. */
+export const builtInBangFor = (t: string): Bang | undefined =>
+  builtInsByShortcut.get(t);
+/** The main shortcut that `t` triggers: a user bang's own, or the built-in an alias belongs to. */
+export const mainShortcut = (t: string, userBangs = readUserBangs()) =>
+  userBangs.some((b) => b.t === t) ? t : (builtInBangFor(t)?.t ?? t);
 export const sameBang = (a: Bang, b: Bang) =>
   a.t === b.t &&
   a.s === b.s &&
@@ -64,7 +79,8 @@ function migrateLegacyCatalog() {
     (b) => !overrides.some((o) => o.t === b.t),
   );
   const disabled = readDisabledBangs();
-  for (const b of bangs) if (!imported.has(b.t)) disabled.add(b.t);
+  for (const b of bangs)
+    if (![b.t, ...(b.ts ?? [])].some((t) => imported.has(t))) disabled.add(b.t);
   writeUserBangs([...added, ...overrides]);
   writeDisabledBangs(disabled);
   localStorage.removeItem(LEGACY_CATALOG_KEY);
@@ -102,8 +118,12 @@ export function findEnabledBang(
   userBangs = readUserBangs(),
   disabled = readDisabledBangs(),
 ): Bang | undefined {
-  if (disabled.has(t)) return undefined;
-  return userBangs.find((b) => b.t === t) ?? builtInBang(t);
+  const userBang = userBangs.find((b) => b.t === t);
+  if (userBang) return disabled.has(t) ? undefined : userBang;
+  // Aliases follow their built-in, including its enabled state and any override.
+  const builtIn = builtInBangFor(t);
+  if (!builtIn || disabled.has(builtIn.t)) return undefined;
+  return userBangs.find((b) => b.t === builtIn.t) ?? builtIn;
 }
 
 export type DefaultResolution = {
@@ -117,12 +137,11 @@ export function resolveDefaultBang(
 ): DefaultResolution {
   const requested = readDefaultShortcut();
   const bang = findEnabledBang(requested, userBangs, disabled);
+  const fallback = mainShortcut(FALLBACK_BANG, userBangs);
   return bang
     ? { bang, requested, usable: true }
     : {
-        bang:
-          userBangs.find((b) => b.t === FALLBACK_BANG) ??
-          builtInBang(FALLBACK_BANG)!,
+        bang: userBangs.find((b) => b.t === fallback) ?? builtInBang(fallback)!,
         requested,
         usable: false,
       };
