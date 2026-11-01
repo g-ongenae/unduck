@@ -1,4 +1,9 @@
-import { findEnabledBang, readDisabledBangs, readUserBangs, resolveDefaultBang } from "./bang-store";
+import {
+  findEnabledBang,
+  readDisabledBangs,
+  readUserBangs,
+  resolveDefaultBang,
+} from "./bang-store";
 import { parseQuery } from "./query";
 
 function showSettings(filter?: string) {
@@ -8,7 +13,9 @@ function showSettings(filter?: string) {
   if (filter) url.searchParams.set("filter", filter);
   url.hash = "built-in-bangs";
   window.history.replaceState(null, "", url);
-  return import("./pages").then(({ renderSettingsPage }) => renderSettingsPage());
+  return import("./pages").then(({ renderSettingsPage }) =>
+    renderSettingsPage(),
+  );
 }
 
 function getRedirectUrl(query: string) {
@@ -17,18 +24,25 @@ function getRedirectUrl(query: string) {
   const userCatalogBang = userBangs.some((b) => b.t === "bang");
   const { shortcut, terms } = parseQuery(
     query,
-    (t) => (t === "bang" && !userCatalogBang) || !!findEnabledBang(t, userBangs, disabled),
+    (t) =>
+      (t === "bang" && !userCatalogBang) ||
+      !!findEnabledBang(t, userBangs, disabled),
   );
   if (shortcut === "bang" && !userCatalogBang) {
     void showSettings(terms);
     return null;
   }
 
-  const bang = (shortcut && findEnabledBang(shortcut, userBangs, disabled)) || resolveDefaultBang(userBangs, disabled).bang;
+  const bang =
+    (shortcut && findEnabledBang(shortcut, userBangs, disabled)) ||
+    resolveDefaultBang(userBangs, disabled).bang;
   // If the query is just `!gh`, use `github.com` instead of `github.com/search?q=`
   if (!terms) return `https://${bang.d}`;
   // Replace %2F with / to fix formats like "!ghr+t3dotgg/unduck"
-  return bang.u.replace("{{{s}}}", encodeURIComponent(terms).replace(/%2F/g, "/"));
+  return bang.u.replace(
+    "{{{s}}}",
+    encodeURIComponent(terms).replace(/%2F/g, "/"),
+  );
 }
 
 const params = new URLSearchParams(window.location.search);

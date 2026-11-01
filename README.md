@@ -6,6 +6,18 @@ DuckDuckGo's bang redirects are too slow. Add the following URL as a custom sear
 https://g-ongenae.github.io/unduck/?q=%s
 ```
 
+## Development
+
+Install dependencies with `pnpm install`, then start the development server with `pnpm dev`.
+
+- `pnpm lint` checks JavaScript and TypeScript with ESLint.
+- `pnpm lint:fix` applies automatic lint fixes.
+- `pnpm format` formats the project with Prettier.
+- `pnpm format:check` checks formatting without changing files.
+- `pnpm build` checks TypeScript and builds the production app.
+
+CI runs lint, formatting, and build checks on pull requests and pushes to `main`.
+
 ## Firefox
 
 Visit https://g-ongenae.github.io/unduck/, right-click the address bar, and choose
