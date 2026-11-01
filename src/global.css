@@ -312,3 +312,4 @@ textarea {
   .bang-badge { background: #333; }
   #default-status.warning { color: #f97066; }
 }
+.panel-fields input:read-only { opacity: .6; cursor: not-allowed; }
