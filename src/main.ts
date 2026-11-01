@@ -1,10 +1,15 @@
+import { loadBangDetails } from "./bang";
 import {
   findEnabledBang,
+  hasLegacyCatalog,
   readDisabledBangs,
   readUserBangs,
   resolveDefaultBang,
 } from "./bang-store";
 import { parseQuery } from "./query";
+
+const loadPages = () =>
+  Promise.all([import("./pages"), loadBangDetails()]).then(([pages]) => pages);
 
 function showSettings(filter?: string) {
   const url = new URL(window.location.href);
@@ -13,9 +18,7 @@ function showSettings(filter?: string) {
   if (filter) url.searchParams.set("filter", filter);
   url.hash = "built-in-bangs";
   window.history.replaceState(null, "", url);
-  return import("./pages").then(({ renderSettingsPage }) =>
-    renderSettingsPage(),
-  );
+  return loadPages().then(({ renderSettingsPage }) => renderSettingsPage());
 }
 
 function getRedirectUrl(query: string) {
@@ -57,12 +60,16 @@ const params = new URLSearchParams(window.location.search);
 const page = params.get("page");
 const query = params.get("q")?.trim() ?? "";
 if (page === "settings") {
-  void import("./pages").then(({ renderSettingsPage }) => renderSettingsPage());
+  void loadPages().then(({ renderSettingsPage }) => renderSettingsPage());
 } else if (page === "bangs") {
   void showSettings();
 } else if (query) {
-  const url = getRedirectUrl(query);
-  if (url) window.location.replace(url);
+  const redirect = () => {
+    const url = getRedirectUrl(query);
+    if (url) window.location.replace(url);
+  };
+  if (hasLegacyCatalog()) void loadBangDetails().then(redirect);
+  else redirect();
 } else {
-  void import("./pages").then(({ renderHomePage }) => renderHomePage());
+  void loadPages().then(({ renderHomePage }) => renderHomePage());
 }
