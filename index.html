@@ -9,6 +9,11 @@
       title="Unduck"
       href="%BASE_URL%opensearch.xml"
     />
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      html { background: #fff; color-scheme: light dark; }
+      @media (prefers-color-scheme: dark) { html { background: #131313; } }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Unduck</title>
     <meta
@@ -16,7 +21,7 @@
       content="A better default search engine (with bangs!)"
     />
   </head>
-  <body style="background-color: transparent">
+  <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
