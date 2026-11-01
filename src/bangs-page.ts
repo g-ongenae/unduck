@@ -1,18 +1,15 @@
-import { activeBangs, readList, validateBang } from "./bang-store";
+import { bangs as builtIns } from "./bang";
+import {
+  DEFAULT_BANG_KEY, activeBangs, builtInBang, exportBackup, parseBackup, readDefaultShortcut, readDisabledBangs,
+  readUserBangs, sameBang, validateBang, writeDisabledBangs, writeUserBangs, type Bang,
+} from "./bang-store";
 
-export const DISABLED_BANGS_KEY = "disabled-built-in-bangs";
+type Options = { filter?: string; onChange?: () => void };
 
-export function readDisabledBangs(): Set<string> {
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem(DISABLED_BANGS_KEY) ?? "[]");
-    return new Set(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []);
-  } catch {
-    return new Set();
-  }
-}
-
-export function renderBuiltInBangs(app: HTMLElement) {
-  let bangs = activeBangs();
+export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = () => {} }: Options = {}) {
+  const builtInShortcuts = new Set(builtIns.map((bang) => bang.t));
+  let userBangs = readUserBangs();
+  let bangs = activeBangs(userBangs);
   app.innerHTML = `
     <section class="bangs-section" aria-labelledby="built-in-heading">
       <div class="bang-toolbar"><h2 id="built-in-heading">Bangs</h2>
@@ -29,6 +26,7 @@ export function renderBuiltInBangs(app: HTMLElement) {
           <thead><tr>
             ${([["t", "Shortcut"], ["s", "Site"], ["d", "Domain"], ["c", "Category"], ["sc", "Subcategory"], ["u", "Search URL"]]).map(([key, label]) => `<th scope="col" aria-sort="none"><button type="button" class="bang-sort" data-key="${key}">${label}<span aria-hidden="true"> ↕</span></button></th>`).join("")}
             <th scope="col" aria-sort="none"><div class="bang-select-all"><button type="button" class="bang-sort" data-key="enabled">Enabled<span aria-hidden="true"> ↕</span></button><input id="select-all" type="checkbox" aria-label="Enable all bangs" /></div></th>
+            <th scope="col">Actions</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -42,7 +40,7 @@ export function renderBuiltInBangs(app: HTMLElement) {
         <form id="add-form">
           <div class="panel-heading"><h2 id="add-heading">Add bang</h2><button type="button" id="close-panel" aria-label="Close panel">✕</button></div>
           <div class="panel-fields">
-          <label>Shortcut<input name="t" placeholder="gh" required pattern="!?[^\\s!]+" /></label>
+          <label>Shortcut<input name="t" id="bang-shortcut" placeholder="gh" required pattern="!?[^\\s!]+" /></label>
           <label>Site<input name="s" placeholder="GitHub" required /></label>
           <label>Domain<input name="d" placeholder="github.com" required /></label>
           <label>Category<input name="c" placeholder="Tech" /></label>
@@ -50,58 +48,107 @@ export function renderBuiltInBangs(app: HTMLElement) {
           <label class="full-field">Search URL<input name="u" type="url" placeholder="https://github.com/search?q={{{s}}}" required /><small>Use {{{s}}} where the search terms go.</small></label>
           </div>
           <p id="add-error" role="alert"></p>
-          <div class="panel-actions"><button type="button" id="cancel-panel">Cancel</button><button type="submit" class="primary">Add bang</button></div>
+          <div class="panel-actions"><button type="button" id="cancel-panel">Cancel</button><button type="submit" class="primary" id="save-bang">Add bang</button></div>
         </form>
       </dialog>
     </section>`;
 
   const dialog = app.querySelector<HTMLDialogElement>('#bang-dialog')!;
   const form = app.querySelector<HTMLFormElement>('#add-form')!;
+  const heading = app.querySelector<HTMLElement>('#add-heading')!;
+  const saveButton = app.querySelector<HTMLButtonElement>('#save-bang')!;
+  const shortcutInput = app.querySelector<HTMLInputElement>('#bang-shortcut')!;
   const status = app.querySelector<HTMLElement>('#list-status')!;
   const error = app.querySelector<HTMLElement>('#add-error')!;
-  app.querySelector('#add-bang')!.addEventListener('click', () => { form.reset(); error.textContent = ''; dialog.showModal(); });
+  let editing: Bang | null = null;
+  const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+
+  function saveUserBangs(list: Bang[], message: string) {
+    writeUserBangs(list);
+    userBangs = list;
+    bangs = activeBangs(userBangs);
+    updateList(false);
+    status.textContent = message;
+    onChange();
+  }
+  function openDialog(bang: Bang | null) {
+    editing = bang;
+    form.reset();
+    error.textContent = '';
+    heading.textContent = saveButton.textContent = bang ? `Edit !${bang.t}` : 'Add bang';
+    if (bang) saveButton.textContent = 'Save';
+    for (const key of ['t', 's', 'd', 'c', 'sc', 'u'] as const) (form.elements.namedItem(key) as HTMLInputElement).value = bang?.[key] ?? '';
+    // A built-in can only be overridden under its own shortcut; rename by adding a new bang instead.
+    shortcutInput.readOnly = !!bang && builtInShortcuts.has(bang.t);
+    dialog.showModal();
+  }
+  app.querySelector('#add-bang')!.addEventListener('click', () => openDialog(null));
   for (const id of ['close-panel', 'cancel-panel']) app.querySelector(`#${id}`)!.addEventListener('click', () => dialog.close());
   form.addEventListener('submit', event => {
     event.preventDefault();
     try {
       const entry = validateBang(Object.fromEntries(new FormData(form)));
-      if (bangs.some(b => b.t === entry.t)) throw new Error('This shortcut already exists. Choose another shortcut.');
-      localStorage.setItem('added-bangs', JSON.stringify([entry, ...(readList('added-bangs') ?? [])]));
-      bangs = activeBangs();
-      input.value = entry.t;
-      updateList();
+      const original = editing?.t;
+      if (entry.t !== original && userBangs.some(b => b.t === entry.t)) throw new Error('You already have a bang with this shortcut. Edit it instead.');
+      const builtIn = builtInBang(entry.t);
+      if (!editing && builtIn && !window.confirm(`!${entry.t} is a built-in bang for ${builtIn.s}. Override it with your version?`)) return;
+      const rest = userBangs.filter(b => b.t !== entry.t && b.t !== original);
+      // Saving a built-in unchanged drops the override instead of storing a copy.
+      const list = builtIn && sameBang(entry, builtIn) ? rest : [entry, ...rest];
+      if (original && original !== entry.t && disabled.delete(original)) { disabled.add(entry.t); saveSelection(); }
       dialog.close();
-      status.textContent = `Added !${entry.t}. Saved in this browser.`;
+      input.value = entry.t;
+      saveUserBangs(list, `${editing ? 'Saved' : 'Added'} !${entry.t}. Saved in this browser.`);
     } catch (e) { error.textContent = (e as Error).message; }
   });
+
+  function useAsDefault(bang: Bang) {
+    disabled.delete(bang.t);
+    saveSelection();
+    localStorage.setItem(DEFAULT_BANG_KEY, bang.t);
+    renderRows();
+    status.textContent = `!${bang.t} is now your default search engine.`;
+    onChange();
+  }
+  function removeUserBang(bang: Bang) {
+    const builtIn = builtInBang(bang.t);
+    const question = builtIn ? `Reset !${bang.t} to the built-in ${builtIn.s} bang?` : `Delete !${bang.t}?`;
+    if (!window.confirm(question)) return;
+    if (!builtIn && disabled.delete(bang.t)) saveSelection();
+    saveUserBangs(userBangs.filter(b => b.t !== bang.t), builtIn ? `Reset !${bang.t} to the built-in bang.` : `Deleted !${bang.t}.`);
+  }
+
   const fileInput = app.querySelector<HTMLInputElement>('#import-file')!;
   app.querySelector('#import-bangs')!.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files?.[0];
     if (!file) return;
     try {
-      const data: unknown = JSON.parse(await file.text());
-      if (!Array.isArray(data)) throw new Error('Choose a JSON array of bangs.');
-      const entries = data.map((value, index) => {
-        try { return validateBang(value); } catch (e) { throw new Error(`Entry ${index + 1}: ${(e as Error).message}`); }
-      });
-      if (new Set(entries.map(b => b.t)).size !== entries.length) throw new Error('The file contains duplicate shortcuts.');
-      if (!window.confirm(`Replace the current list with ${entries.length} imported bangs?`)) return;
-      localStorage.setItem('custom-bangs', JSON.stringify(entries));
-      localStorage.removeItem('added-bangs');
-      disabled.clear();
-      saveSelection();
-      bangs = activeBangs(); input.value = ''; updateList();
-      status.textContent = `Imported ${entries.length} bangs. Saved in this browser.`;
+      const backup = parseBackup(JSON.parse(await file.text()));
+      if (backup.disabled && backup.defaultBang) {
+        if (!window.confirm(`Replace your bangs, enabled bangs and default search engine with this backup (${plural(backup.bangs.length, 'custom bang')})?`)) return;
+        disabled.clear();
+        for (const t of backup.disabled) disabled.add(t);
+        saveSelection();
+        localStorage.setItem(DEFAULT_BANG_KEY, backup.defaultBang);
+        input.value = '';
+        saveUserBangs(backup.bangs, `Restored backup with ${plural(backup.bangs.length, 'custom bang')}. Saved in this browser.`);
+        return;
+      }
+      if (!window.confirm(`Add ${plural(backup.bangs.length, 'bang')}? Imported bangs replace your bangs with the same shortcut.`)) return;
+      const imported = new Set(backup.bangs.map(b => b.t));
+      const list = [...backup.bangs.filter(b => { const builtIn = builtInBang(b.t); return !builtIn || !sameBang(b, builtIn); }), ...userBangs.filter(b => !imported.has(b.t))];
+      input.value = '';
+      saveUserBangs(list, `Imported ${plural(backup.bangs.length, 'bang')}. Saved in this browser.`);
     } catch (e) { status.textContent = `Import failed: ${(e as Error).message}`; }
     finally { fileInput.value = ''; }
   });
   app.querySelector('#export-bangs')!.addEventListener('click', () => {
-    const entries = bangs.filter(b => !disabled.has(b.t));
-    const url = URL.createObjectURL(new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' }));
-    const link = document.createElement('a'); link.href = url; link.download = 'bangs.json'; link.click();
+    const backup = exportBackup();
+    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a'); link.href = url; link.download = 'unduck-backup.json'; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    status.textContent = `Exported ${entries.length} enabled bangs.`;
+    status.textContent = `Exported ${plural(backup.bangs.length, 'custom bang')}, ${plural(backup.disabled.length, 'disabled bang')} and your default search engine.`;
   });
 
   const input = app.querySelector<HTMLInputElement>("#bang-filter")!;
@@ -120,7 +167,7 @@ export function renderBuiltInBangs(app: HTMLElement) {
   let filtered = bangs;
   const disabled = readDisabledBangs();
   function saveSelection() {
-    localStorage.setItem(DISABLED_BANGS_KEY, JSON.stringify([...disabled]));
+    writeDisabledBangs(disabled);
   }
   function updateSelection() {
     const enabledCount = bangs.reduce((total, bang) => total + Number(!disabled.has(bang.t)), 0);
@@ -132,10 +179,12 @@ export function renderBuiltInBangs(app: HTMLElement) {
     else for (const bang of bangs) disabled.add(bang.t);
     saveSelection();
     renderRows();
+    onChange();
   });
 
   function renderRows() {
     updateSelection();
+    const defaultShortcut = readDefaultShortcut();
     const start = page * pageSize;
     const fragment = document.createDocumentFragment();
     for (const bang of filtered.slice(start, start + pageSize)) {
@@ -149,20 +198,43 @@ export function renderBuiltInBangs(app: HTMLElement) {
         if (checkbox.checked) disabled.delete(bang.t); else disabled.add(bang.t);
         saveSelection();
         updateSelection();
+        onChange();
       });
       selection.append(checkbox);
-      for (const value of [`!${bang.t}`, bang.s, bang.d, bang.c ?? "—", bang.sc ?? "—", bang.u]) {
+      for (const value of [`!${bang.t}`, bang.s, bang.d, bang.c || "—", bang.sc || "—", bang.u]) {
         const cell = document.createElement("td");
         cell.textContent = value;
         row.append(cell);
       }
-      row.append(selection);
+      const isUserBang = userBangs.includes(bang);
+      if (isUserBang) {
+        const badge = document.createElement("span");
+        badge.className = "bang-badge";
+        badge.textContent = builtInShortcuts.has(bang.t) ? "modified" : "custom";
+        row.firstElementChild!.append(" ", badge);
+      }
+      const actions = document.createElement("td");
+      actions.className = "bang-row-actions";
+      const action = (label: string, handler: () => void, disabledButton = false) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        button.disabled = disabledButton;
+        button.setAttribute("aria-label", `${label} !${bang.t}`);
+        button.addEventListener("click", handler);
+        actions.append(button);
+      };
+      action("Edit", () => openDialog(bang));
+      const isDefault = defaultShortcut === bang.t;
+      action(isDefault ? "Default" : "Use as default", () => useAsDefault(bang), isDefault);
+      if (isUserBang) action(builtInShortcuts.has(bang.t) ? "Reset" : "Delete", () => removeUserBang(bang));
+      row.append(selection, actions);
       fragment.append(row);
     }
     if (!filtered.length) {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
-      cell.colSpan = 7;
+      cell.colSpan = 8;
       cell.textContent = "No bangs match your search.";
       row.append(cell);
       fragment.append(row);
@@ -174,7 +246,7 @@ export function renderBuiltInBangs(app: HTMLElement) {
     next.disabled = start + pageSize >= filtered.length;
   }
 
-  function updateList() {
+  function updateList(resetPage = true) {
     const term = input.value.trim().toLowerCase().replace(/^!/, "");
     filtered = bangs.filter((bang) =>
       [bang.t, bang.s, bang.d, bang.c, bang.sc, bang.u].some((value) => value?.toLowerCase().includes(term)),
@@ -190,10 +262,11 @@ export function renderBuiltInBangs(app: HTMLElement) {
         return multiplier * (a[key] ?? "").localeCompare(b[key] ?? "", undefined, { sensitivity: "base", numeric: true });
       });
     }
-    page = 0;
+    if (resetPage) page = 0;
+    page = Math.min(page, Math.max(0, Math.ceil(filtered.length / pageSize) - 1));
     renderRows();
   }
-  input.addEventListener("input", updateList);
+  input.addEventListener("input", () => updateList());
   sortButtons.forEach((button) => button.addEventListener("click", () => {
     const key = button.dataset.key as SortKey;
     ascending = sortKey === key ? !ascending : true;
@@ -207,5 +280,6 @@ export function renderBuiltInBangs(app: HTMLElement) {
   }));
   previous.addEventListener("click", () => { page--; renderRows(); });
   next.addEventListener("click", () => { page++; renderRows(); });
-  renderRows();
+  input.value = filter;
+  updateList();
 }

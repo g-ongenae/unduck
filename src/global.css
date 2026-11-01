@@ -155,9 +155,6 @@ textarea {
     color: #ddd;
   }
 
-  #app {
-    background-color: #131313;
-  }
 
   a {
     color: #a9a9a9;
@@ -165,6 +162,10 @@ textarea {
 
   a:hover {
     color: #888;
+  }
+
+  #app {
+    background-color: #131313;
   }
 
   .footer,
@@ -237,7 +238,7 @@ textarea {
 .bang-sort:hover { text-decoration: underline; }
 .bang-sort:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 .bangs-section .bang-select-all { display: flex; align-items: center; gap: 8px; margin: 0; }
-.bang-table td:last-child { min-width: auto; text-align: center; }
+.bang-table td:nth-child(7) { min-width: auto; text-align: center; }
 
 .settings-link {
   position: absolute;
@@ -305,3 +306,13 @@ textarea {
 }
 
 .bang-select-all { white-space: nowrap; }
+
+.bang-badge { display: inline-block; padding: 0 6px; border-radius: 999px; background: #eee; font-family: system-ui, sans-serif; font-size: 11px; }
+.bang-table td.bang-row-actions { min-width: auto; white-space: nowrap; }
+.bang-row-actions button { margin-right: 4px; padding: 2px 8px; font-size: 13px; }
+.bang-row-actions button:disabled { opacity: .5; cursor: default; }
+#default-status.warning { color: #b42318; }
+@media (prefers-color-scheme: dark) {
+  .bang-badge { background: #333; }
+  #default-status.warning { color: #f97066; }
+}
