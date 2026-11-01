@@ -28,7 +28,7 @@ export function renderBangsPage() {
           <caption>Default bang shortcuts and search destinations</caption>
           <thead><tr>
             ${([["t", "Shortcut"], ["s", "Site"], ["d", "Domain"], ["c", "Category"], ["sc", "Subcategory"], ["u", "Search URL"]]).map(([key, label]) => `<th scope="col" aria-sort="none"><button type="button" class="bang-sort" data-key="${key}">${label}<span aria-hidden="true"> ↕</span></button></th>`).join("")}
-            <th scope="col"><label class="bang-select-all"><span>Enabled</span><input id="select-all" type="checkbox" aria-label="Enable all built-in bangs" /></label></th>
+            <th scope="col" aria-sort="none"><div class="bang-select-all"><button type="button" class="bang-sort" data-key="enabled">Enabled<span aria-hidden="true"> ↕</span></button><input id="select-all" type="checkbox" aria-label="Enable all built-in bangs" /></div></th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -41,7 +41,7 @@ export function renderBangsPage() {
     </main>`;
 
   const input = app.querySelector<HTMLInputElement>("#bang-filter")!;
-  type SortKey = "t" | "s" | "d" | "c" | "sc" | "u";
+  type SortKey = "t" | "s" | "d" | "c" | "sc" | "u" | "enabled";
   let sortKey: SortKey | null = null;
   let ascending = true;
   const sortButtons = app.querySelectorAll<HTMLButtonElement>(".bang-sort");
@@ -118,7 +118,13 @@ export function renderBangsPage() {
     if (sortKey) {
       const key = sortKey;
       const multiplier = ascending ? 1 : -1;
-      filtered.sort((a, b) => multiplier * (a[key] ?? "").localeCompare(b[key] ?? "", undefined, { sensitivity: "base", numeric: true }));
+      filtered.sort((a, b) => {
+        if (key === "enabled") {
+          // Ascending puts disabled (false) before enabled (true).
+          return multiplier * (Number(!disabled.has(a.t)) - Number(!disabled.has(b.t)));
+        }
+        return multiplier * (a[key] ?? "").localeCompare(b[key] ?? "", undefined, { sensitivity: "base", numeric: true });
+      });
     }
     page = 0;
     renderRows();
