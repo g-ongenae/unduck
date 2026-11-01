@@ -1,5 +1,16 @@
 import { bangs } from "./bang";
 
+export const DISABLED_BANGS_KEY = "disabled-built-in-bangs";
+
+export function readDisabledBangs(): Set<string> {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(DISABLED_BANGS_KEY) ?? "[]");
+    return new Set(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
 export function renderBangsPage() {
   document.title = "Built-in bangs | Und*ck";
   const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -8,13 +19,15 @@ export function renderBangsPage() {
       <a href="./">← Back to settings</a>
       <h1>Built-in bangs</h1>
       <p>Browse the default list included with Und*ck. Use a shortcut such as <code>!gh</code> before your search terms. Search URLs use <code>{{{s}}}</code> for those terms.</p>
+      <div class="settings-actions"><button type="button" id="select-all">Select all</button><button type="button" id="unselect-all">Unselect all</button></div>
+      <p>Selections apply to the entire built-in list and are saved in this browser.</p>
       <label for="bang-filter">Search bangs</label>
       <input id="bang-filter" type="search" placeholder="Shortcut, site, domain, category or URL" />
       <p id="bang-count" role="status" aria-live="polite"></p>
       <div class="bang-table-scroll" role="region" aria-label="Built-in bangs table" tabindex="0">
         <table class="bang-table">
           <caption>Default bang shortcuts and search destinations</caption>
-          <thead><tr><th scope="col">Shortcut</th><th scope="col">Site</th><th scope="col">Domain</th><th scope="col">Category</th><th scope="col">Subcategory</th><th scope="col">Search URL</th></tr></thead>
+          <thead><tr><th scope="col">Enabled</th><th scope="col">Shortcut</th><th scope="col">Site</th><th scope="col">Domain</th><th scope="col">Category</th><th scope="col">Subcategory</th><th scope="col">Search URL</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -34,12 +47,34 @@ export function renderBangsPage() {
   const pageSize = 100;
   let page = 0;
   let filtered = bangs;
+  const disabled = readDisabledBangs();
+  function saveSelection() {
+    localStorage.setItem(DISABLED_BANGS_KEY, JSON.stringify([...disabled]));
+  }
+  app.querySelector<HTMLButtonElement>("#select-all")!.addEventListener("click", () => {
+    disabled.clear(); saveSelection(); renderRows();
+  });
+  app.querySelector<HTMLButtonElement>("#unselect-all")!.addEventListener("click", () => {
+    for (const bang of bangs) disabled.add(bang.t);
+    saveSelection(); renderRows();
+  });
 
   function renderRows() {
     const start = page * pageSize;
     const fragment = document.createDocumentFragment();
     for (const bang of filtered.slice(start, start + pageSize)) {
       const row = document.createElement("tr");
+      const selection = document.createElement("td");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = !disabled.has(bang.t);
+      checkbox.setAttribute("aria-label", `Enable !${bang.t}`);
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) disabled.delete(bang.t); else disabled.add(bang.t);
+        saveSelection();
+      });
+      selection.append(checkbox);
+      row.append(selection);
       for (const value of [`!${bang.t}`, bang.s, bang.d, bang.c ?? "—", bang.sc ?? "—", bang.u]) {
         const cell = document.createElement("td");
         cell.textContent = value;
@@ -50,7 +85,7 @@ export function renderBangsPage() {
     if (!filtered.length) {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
-      cell.colSpan = 6;
+      cell.colSpan = 7;
       cell.textContent = "No bangs match your search.";
       row.append(cell);
       fragment.append(row);

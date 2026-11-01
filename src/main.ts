@@ -1,6 +1,6 @@
 import { bangs } from "./bang";
 import "./global.css";
-import { renderBangsPage } from "./bangs-page";
+import { readDisabledBangs, renderBangsPage } from "./bangs-page";
 
 type CustomBang = { t: string; u: string; d: string };
 const CUSTOM_KEY = "custom-bangs";
@@ -136,7 +136,9 @@ function getBangredirectUrl() {
   const match = query.match(/!(\S+)/i);
 
   const bangCandidate = match?.[1]?.toLowerCase();
-  const selectedBang = (readCustomBangs() ?? bangs).find((b) => b.t === bangCandidate) ?? defaultBang;
+  const customBangs = readCustomBangs();
+  const disabled = readDisabledBangs();
+  const selectedBang = (customBangs ?? bangs.filter((b) => !disabled.has(b.t))).find((b) => b.t === bangCandidate) ?? defaultBang;
 
   // Remove the first bang from the query
   const cleanQuery = query.replace(/!\S+\s*/i, "").trim();
