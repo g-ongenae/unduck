@@ -2,6 +2,7 @@ import { bangs } from "./bang";
 import { activeBangs } from "./bang-store";
 import "./global.css";
 import { readDisabledBangs, renderBuiltInBangs } from "./bangs-page";
+import { parseQuery } from "./query";
 
 function noSearchDefaultPageRender() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -92,14 +93,10 @@ function getBangredirectUrl() {
     return null;
   }
 
-  const match = query.match(/!(\S+)/i);
-
-  const bangCandidate = match?.[1]?.toLowerCase();
   const disabled = readDisabledBangs();
-  const selectedBang = activeBangs().filter((b) => !disabled.has(b.t)).find((b) => b.t === bangCandidate) ?? defaultBang;
-
-  // Remove the first bang from the query
-  const cleanQuery = query.replace(/!\S+\s*/i, "").trim();
+  const enabled = activeBangs().filter((b) => !disabled.has(b.t));
+  const { shortcut, terms: cleanQuery } = parseQuery(query, (t) => enabled.some((b) => b.t === t));
+  const selectedBang = enabled.find((b) => b.t === shortcut) ?? defaultBang;
 
   // If the query is just `!gh`, use `github.com` instead of `github.com/search?q=`
   if (cleanQuery === "")
