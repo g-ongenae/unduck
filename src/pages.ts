@@ -1,4 +1,4 @@
-import { DEFAULT_BANG_KEY, findEnabledBang, readUserBangs, resolveDefaultBang } from "./bang-store";
+import { DEFAULT_BANG_KEY, findEnabledBang, readDisabledBangs, readUserBangs, resolveDefaultBang } from "./bang-store";
 import { renderBuiltInBangs } from "./bangs-page";
 import "./global.css";
 
@@ -77,9 +77,12 @@ export function renderSettingsPage() {
     const { bang, requested, usable } = resolveDefaultBang();
     defaultInput.value = requested;
     defaultStatus.classList.toggle("warning", !usable);
+    const problem = readDisabledBangs().has(requested) ? "is disabled" : "no longer exists";
     defaultStatus.textContent = usable
       ? message
-      : `!${requested} is disabled or no longer exists, so searches use !${bang.t}. Choose another default or enable it.`;
+      : requested === bang.t
+        ? `!${requested} ${problem}, but searches still fall back to it. Choose another default or enable it.`
+        : `!${requested} ${problem}, so searches use !${bang.t} instead. Choose another default or enable it.`;
   }
 
   const filter = new URLSearchParams(window.location.search).get("filter") ?? "";
