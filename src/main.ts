@@ -1,5 +1,6 @@
 import { bangs } from "./bang";
 import "./global.css";
+import { renderBangsPage } from "./bangs-page";
 
 type CustomBang = { t: string; u: string; d: string };
 const CUSTOM_KEY = "custom-bangs";
@@ -45,6 +46,7 @@ function noSearchDefaultPageRender() {
         </section>
         <section class="settings">
           <h2>Your bangs</h2>
+          <p><a href="?page=bangs">Browse built-in bangs</a></p>
           <p>Use your own list instead of the built-in bangs. Enter one shortcut and search URL per line, separated by a space. Use <code>{{{s}}}</code> where the search terms go.</p>
           <label for="custom-bangs">Custom bangs</label>
           <textarea id="custom-bangs" rows="5" placeholder="gh https://github.com/search?q={{{s}}}"></textarea>
@@ -168,4 +170,8 @@ function doRedirect() {
   window.location.replace(searchUrl);
 }
 
-doRedirect();
+if (new URLSearchParams(window.location.search).get("page") === "bangs") {
+  renderBangsPage();
+} else {
+  doRedirect();
+}
