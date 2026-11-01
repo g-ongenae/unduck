@@ -214,6 +214,8 @@ textarea {
 .bangs-page > p { margin-bottom: 20px; }
 .bangs-page label { display: block; font-weight: 600; margin-bottom: 6px; }
 #bang-filter { width: 100%; padding: 10px 12px; border: 1px solid #aaa; border-radius: 4px; }
+#bang-sort, #bang-direction { padding: 8px 12px; margin-bottom: 12px; }
+#bang-filter { margin-bottom: 12px; }
 #bang-count { margin: 12px 0; color: #666; }
 .bang-table-scroll { overflow-x: auto; border: 1px solid #ddd; border-radius: 4px; }
 .bang-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }

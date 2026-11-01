@@ -23,6 +23,18 @@ export function renderBangsPage() {
       <p>Selections apply to the entire built-in list and are saved in this browser.</p>
       <label for="bang-filter">Search bangs</label>
       <input id="bang-filter" type="search" placeholder="Shortcut, site, domain, category or URL" />
+      <label for="bang-sort">Order by</label>
+      <select id="bang-sort">
+        <option value="default">Default order</option>
+        <option value="t">Shortcut</option>
+        <option value="s">Site</option>
+        <option value="d">Domain</option>
+        <option value="c">Category</option>
+        <option value="sc">Subcategory</option>
+        <option value="u">Search URL</option>
+      </select>
+      <label for="bang-direction">Direction</label>
+      <select id="bang-direction"><option value="asc">Ascending</option><option value="desc">Descending</option></select>
       <p id="bang-count" role="status" aria-live="polite"></p>
       <div class="bang-table-scroll" role="region" aria-label="Built-in bangs table" tabindex="0">
         <table class="bang-table">
@@ -39,6 +51,8 @@ export function renderBangsPage() {
     </main>`;
 
   const input = app.querySelector<HTMLInputElement>("#bang-filter")!;
+  const sort = app.querySelector<HTMLSelectElement>("#bang-sort")!;
+  const direction = app.querySelector<HTMLSelectElement>("#bang-direction")!;
   const body = app.querySelector<HTMLTableSectionElement>("tbody")!;
   const count = app.querySelector<HTMLParagraphElement>("#bang-count")!;
   const pageLabel = app.querySelector<HTMLSpanElement>("#bang-page")!;
@@ -97,14 +111,24 @@ export function renderBangsPage() {
     next.disabled = start + pageSize >= filtered.length;
   }
 
-  input.addEventListener("input", () => {
+  function updateList() {
     const term = input.value.trim().toLowerCase().replace(/^!/, "");
     filtered = bangs.filter((bang) =>
       [bang.t, bang.s, bang.d, bang.c, bang.sc, bang.u].some((value) => value?.toLowerCase().includes(term)),
     );
+    const key = sort.value as "t" | "s" | "d" | "c" | "sc" | "u" | "default";
+    direction.disabled = key === "default";
+    if (key !== "default") {
+      const multiplier = direction.value === "asc" ? 1 : -1;
+      filtered.sort((a, b) => multiplier * (a[key] ?? "").localeCompare(b[key] ?? "", undefined, { sensitivity: "base", numeric: true }));
+    }
     page = 0;
     renderRows();
-  });
+  }
+  input.addEventListener("input", updateList);
+  sort.addEventListener("change", updateList);
+  direction.addEventListener("change", updateList);
+  direction.disabled = true;
   previous.addEventListener("click", () => { page--; renderRows(); });
   next.addEventListener("click", () => { page++; renderRows(); });
   renderRows();
