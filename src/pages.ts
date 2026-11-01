@@ -1,13 +1,26 @@
-import { DEFAULT_BANG_KEY, findEnabledBang, readDisabledBangs, readUserBangs, resolveDefaultBang } from "./bang-store";
+import {
+  DEFAULT_BANG_KEY,
+  findEnabledBang,
+  readDisabledBangs,
+  readUserBangs,
+  resolveDefaultBang,
+} from "./bang-store";
 import { renderBuiltInBangs } from "./bangs-page";
 import "./global.css";
 
-const FONT_URL = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap";
+const FONT_URL =
+  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap";
 
 // Kept out of index.html so search redirects never wait on third-party requests.
 function loadExternalAssets() {
-  const font = Object.assign(document.createElement("link"), { rel: "stylesheet", href: FONT_URL });
-  const analytics = Object.assign(document.createElement("script"), { defer: true, src: "https://plausible.io/js/script.js" });
+  const font = Object.assign(document.createElement("link"), {
+    rel: "stylesheet",
+    href: FONT_URL,
+  });
+  const analytics = Object.assign(document.createElement("script"), {
+    defer: true,
+    src: "https://plausible.io/js/script.js",
+  });
   analytics.dataset.domain = "unduck.link";
   document.head.append(font, analytics);
 }
@@ -77,7 +90,9 @@ export function renderSettingsPage() {
     const { bang, requested, usable } = resolveDefaultBang();
     defaultInput.value = requested;
     defaultStatus.classList.toggle("warning", !usable);
-    const problem = readDisabledBangs().has(requested) ? "is disabled" : "no longer exists";
+    const problem = readDisabledBangs().has(requested)
+      ? "is disabled"
+      : "no longer exists";
     defaultStatus.textContent = usable
       ? message
       : requested === bang.t
@@ -85,20 +100,31 @@ export function renderSettingsPage() {
         : `!${requested} ${problem}, so searches use !${bang.t} instead. Choose another default or enable it.`;
   }
 
-  const filter = new URLSearchParams(window.location.search).get("filter") ?? "";
-  renderBuiltInBangs(app.querySelector<HTMLElement>("#built-in-bangs")!, { filter, onChange: refreshDefault });
+  const filter =
+    new URLSearchParams(window.location.search).get("filter") ?? "";
+  renderBuiltInBangs(app.querySelector<HTMLElement>("#built-in-bangs")!, {
+    filter,
+    onChange: refreshDefault,
+  });
   refreshDefault();
 
-  app.querySelector<HTMLFormElement>("#default-form")!.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const shortcut = defaultInput.value.trim().replace(/^!/, "").toLowerCase();
-    if (!findEnabledBang(shortcut, readUserBangs())) {
-      defaultStatus.textContent = "Enter an enabled bang shortcut, such as ddg or g.";
-      return;
-    }
-    localStorage.setItem(DEFAULT_BANG_KEY, shortcut);
-    refreshDefault("Default search engine saved on this browser.");
-  });
+  app
+    .querySelector<HTMLFormElement>("#default-form")!
+    .addEventListener("submit", (event) => {
+      event.preventDefault();
+      const shortcut = defaultInput.value
+        .trim()
+        .replace(/^!/, "")
+        .toLowerCase();
+      if (!findEnabledBang(shortcut, readUserBangs())) {
+        defaultStatus.textContent =
+          "Enter an enabled bang shortcut, such as ddg or g.";
+        return;
+      }
+      localStorage.setItem(DEFAULT_BANG_KEY, shortcut);
+      refreshDefault("Default search engine saved on this browser.");
+    });
 
-  if (window.location.hash === "#built-in-bangs") document.getElementById("built-in-bangs")!.scrollIntoView();
+  if (window.location.hash === "#built-in-bangs")
+    document.getElementById("built-in-bangs")!.scrollIntoView();
 }

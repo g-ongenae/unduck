@@ -1,12 +1,26 @@
 import { bangs as builtIns } from "./bang";
 import {
-  DEFAULT_BANG_KEY, activeBangs, builtInBang, exportBackup, parseBackup, readDefaultShortcut, readDisabledBangs,
-  readUserBangs, sameBang, validateBang, writeDisabledBangs, writeUserBangs, type Bang,
+  DEFAULT_BANG_KEY,
+  activeBangs,
+  builtInBang,
+  exportBackup,
+  parseBackup,
+  readDefaultShortcut,
+  readDisabledBangs,
+  readUserBangs,
+  sameBang,
+  validateBang,
+  writeDisabledBangs,
+  writeUserBangs,
+  type Bang,
 } from "./bang-store";
 
 type Options = { filter?: string; onChange?: () => void };
 
-export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = () => {} }: Options = {}) {
+export function renderBuiltInBangs(
+  app: HTMLElement,
+  { filter = "", onChange = () => {} }: Options = {},
+) {
   const builtInShortcuts = new Set(builtIns.map((bang) => bang.t));
   let userBangs = readUserBangs();
   let bangs = activeBangs(userBangs);
@@ -24,7 +38,19 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
         <table class="bang-table">
           <caption class="sr-only">Bang shortcuts and search destinations</caption>
           <thead><tr>
-            ${([["t", "Shortcut"], ["s", "Site"], ["d", "Domain"], ["c", "Category"], ["sc", "Subcategory"], ["u", "Search URL"]]).map(([key, label]) => `<th scope="col" aria-sort="none"><button type="button" class="bang-sort" data-key="${key}">${label}<span aria-hidden="true"> ↕</span></button></th>`).join("")}
+            ${[
+              ["t", "Shortcut"],
+              ["s", "Site"],
+              ["d", "Domain"],
+              ["c", "Category"],
+              ["sc", "Subcategory"],
+              ["u", "Search URL"],
+            ]
+              .map(
+                ([key, label]) =>
+                  `<th scope="col" aria-sort="none"><button type="button" class="bang-sort" data-key="${key}">${label}<span aria-hidden="true"> ↕</span></button></th>`,
+              )
+              .join("")}
             <th scope="col" aria-sort="none"><div class="bang-select-all"><button type="button" class="bang-sort" data-key="enabled">Enabled<span aria-hidden="true"> ↕</span></button><input id="select-all" type="checkbox" aria-label="Enable all bangs" /></div></th>
             <th scope="col"><span class="sr-only">Actions</span></th>
           </tr></thead>
@@ -54,18 +80,19 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
       </dialog>
     </section>`;
 
-  const dialog = app.querySelector<HTMLDialogElement>('#bang-dialog')!;
-  const form = app.querySelector<HTMLFormElement>('#add-form')!;
-  const heading = app.querySelector<HTMLElement>('#add-heading')!;
-  const saveButton = app.querySelector<HTMLButtonElement>('#save-bang')!;
-  const shortcutInput = app.querySelector<HTMLInputElement>('#bang-shortcut')!;
-  const status = app.querySelector<HTMLElement>('#list-status')!;
-  const error = app.querySelector<HTMLElement>('#add-error')!;
-  const secondary = app.querySelector<HTMLElement>('#panel-secondary')!;
-  const defaultButton = app.querySelector<HTMLButtonElement>('#default-panel')!;
-  const removeButton = app.querySelector<HTMLButtonElement>('#remove-panel')!;
+  const dialog = app.querySelector<HTMLDialogElement>("#bang-dialog")!;
+  const form = app.querySelector<HTMLFormElement>("#add-form")!;
+  const heading = app.querySelector<HTMLElement>("#add-heading")!;
+  const saveButton = app.querySelector<HTMLButtonElement>("#save-bang")!;
+  const shortcutInput = app.querySelector<HTMLInputElement>("#bang-shortcut")!;
+  const status = app.querySelector<HTMLElement>("#list-status")!;
+  const error = app.querySelector<HTMLElement>("#add-error")!;
+  const secondary = app.querySelector<HTMLElement>("#panel-secondary")!;
+  const defaultButton = app.querySelector<HTMLButtonElement>("#default-panel")!;
+  const removeButton = app.querySelector<HTMLButtonElement>("#remove-panel")!;
   let editing: Bang | null = null;
-  const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+  const plural = (count: number, noun: string) =>
+    `${count} ${noun}${count === 1 ? "" : "s"}`;
 
   function saveUserBangs(list: Bang[], message: string) {
     writeUserBangs(list);
@@ -78,10 +105,14 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
   function openDialog(bang: Bang | null) {
     editing = bang;
     form.reset();
-    error.textContent = '';
-    heading.textContent = saveButton.textContent = bang ? `Edit !${bang.t}` : 'Add bang';
-    if (bang) saveButton.textContent = 'Save';
-    for (const key of ['t', 's', 'd', 'c', 'sc', 'u'] as const) (form.elements.namedItem(key) as HTMLInputElement).value = bang?.[key] ?? '';
+    error.textContent = "";
+    heading.textContent = saveButton.textContent = bang
+      ? `Edit !${bang.t}`
+      : "Add bang";
+    if (bang) saveButton.textContent = "Save";
+    for (const key of ["t", "s", "d", "c", "sc", "u"] as const)
+      (form.elements.namedItem(key) as HTMLInputElement).value =
+        bang?.[key] ?? "";
     // A built-in can only be overridden under its own shortcut; rename by adding a new bang instead.
     shortcutInput.readOnly = !!bang && builtInShortcuts.has(bang.t);
     secondary.hidden = !bang;
@@ -89,35 +120,70 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
       updateDefaultButton(bang);
       const isUserBang = userBangs.includes(bang);
       removeButton.hidden = !isUserBang;
-      removeButton.textContent = builtInShortcuts.has(bang.t) ? 'Reset to built-in' : 'Delete';
+      removeButton.textContent = builtInShortcuts.has(bang.t)
+        ? "Reset to built-in"
+        : "Delete";
     }
     dialog.showModal();
   }
   function updateDefaultButton(bang: Bang) {
     const isDefault = readDefaultShortcut() === bang.t;
     defaultButton.disabled = isDefault;
-    defaultButton.textContent = isDefault ? 'Default search engine ✓' : 'Use as default';
+    defaultButton.textContent = isDefault
+      ? "Default search engine ✓"
+      : "Use as default";
   }
-  defaultButton.addEventListener('click', () => { if (editing) { useAsDefault(editing); updateDefaultButton(editing); } });
-  removeButton.addEventListener('click', () => { if (editing && removeUserBang(editing)) dialog.close(); });
-  app.querySelector('#add-bang')!.addEventListener('click', () => openDialog(null));
-  for (const id of ['close-panel', 'cancel-panel']) app.querySelector(`#${id}`)!.addEventListener('click', () => dialog.close());
-  form.addEventListener('submit', event => {
+  defaultButton.addEventListener("click", () => {
+    if (editing) {
+      useAsDefault(editing);
+      updateDefaultButton(editing);
+    }
+  });
+  removeButton.addEventListener("click", () => {
+    if (editing && removeUserBang(editing)) dialog.close();
+  });
+  app
+    .querySelector("#add-bang")!
+    .addEventListener("click", () => openDialog(null));
+  for (const id of ["close-panel", "cancel-panel"])
+    app
+      .querySelector(`#${id}`)!
+      .addEventListener("click", () => dialog.close());
+  form.addEventListener("submit", (event) => {
     event.preventDefault();
     try {
       const entry = validateBang(Object.fromEntries(new FormData(form)));
       const original = editing?.t;
-      if (entry.t !== original && userBangs.some(b => b.t === entry.t)) throw new Error('You already have a bang with this shortcut. Edit it instead.');
+      if (entry.t !== original && userBangs.some((b) => b.t === entry.t))
+        throw new Error(
+          "You already have a bang with this shortcut. Edit it instead.",
+        );
       const builtIn = builtInBang(entry.t);
-      if (!editing && builtIn && !window.confirm(`!${entry.t} is a built-in bang for ${builtIn.s}. Override it with your version?`)) return;
-      const rest = userBangs.filter(b => b.t !== entry.t && b.t !== original);
+      if (
+        !editing &&
+        builtIn &&
+        !window.confirm(
+          `!${entry.t} is a built-in bang for ${builtIn.s}. Override it with your version?`,
+        )
+      )
+        return;
+      const rest = userBangs.filter((b) => b.t !== entry.t && b.t !== original);
       // Saving a built-in unchanged drops the override instead of storing a copy.
-      const list = builtIn && sameBang(entry, builtIn) ? rest : [entry, ...rest];
-      if (original && original !== entry.t && disabled.delete(original)) { disabled.add(entry.t); saveSelection(); }
+      const list =
+        builtIn && sameBang(entry, builtIn) ? rest : [entry, ...rest];
+      if (original && original !== entry.t && disabled.delete(original)) {
+        disabled.add(entry.t);
+        saveSelection();
+      }
       dialog.close();
       input.value = entry.t;
-      saveUserBangs(list, `${editing ? 'Saved' : 'Added'} !${entry.t}. Saved in this browser.`);
-    } catch (e) { error.textContent = (e as Error).message; }
+      saveUserBangs(
+        list,
+        `${editing ? "Saved" : "Added"} !${entry.t}. Saved in this browser.`,
+      );
+    } catch (e) {
+      error.textContent = (e as Error).message;
+    }
   });
 
   function useAsDefault(bang: Bang) {
@@ -130,44 +196,83 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
   }
   function removeUserBang(bang: Bang) {
     const builtIn = builtInBang(bang.t);
-    const question = builtIn ? `Reset !${bang.t} to the built-in ${builtIn.s} bang?` : `Delete !${bang.t}?`;
+    const question = builtIn
+      ? `Reset !${bang.t} to the built-in ${builtIn.s} bang?`
+      : `Delete !${bang.t}?`;
     if (!window.confirm(question)) return false;
     if (!builtIn && disabled.delete(bang.t)) saveSelection();
-    saveUserBangs(userBangs.filter(b => b.t !== bang.t), builtIn ? `Reset !${bang.t} to the built-in bang.` : `Deleted !${bang.t}.`);
+    saveUserBangs(
+      userBangs.filter((b) => b.t !== bang.t),
+      builtIn
+        ? `Reset !${bang.t} to the built-in bang.`
+        : `Deleted !${bang.t}.`,
+    );
     return true;
   }
 
-  const fileInput = app.querySelector<HTMLInputElement>('#import-file')!;
-  app.querySelector('#import-bangs')!.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', async () => {
+  const fileInput = app.querySelector<HTMLInputElement>("#import-file")!;
+  app
+    .querySelector("#import-bangs")!
+    .addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", async () => {
     const file = fileInput.files?.[0];
     if (!file) return;
     try {
       const backup = parseBackup(JSON.parse(await file.text()));
       if (backup.disabled && backup.defaultBang) {
-        if (!window.confirm(`Replace your bangs, enabled bangs and default search engine with this backup (${plural(backup.bangs.length, 'custom bang')})?`)) return;
+        if (
+          !window.confirm(
+            `Replace your bangs, enabled bangs and default search engine with this backup (${plural(backup.bangs.length, "custom bang")})?`,
+          )
+        )
+          return;
         disabled.clear();
         for (const t of backup.disabled) disabled.add(t);
         saveSelection();
         localStorage.setItem(DEFAULT_BANG_KEY, backup.defaultBang);
-        input.value = '';
-        saveUserBangs(backup.bangs, `Restored backup with ${plural(backup.bangs.length, 'custom bang')}. Saved in this browser.`);
+        input.value = "";
+        saveUserBangs(
+          backup.bangs,
+          `Restored backup with ${plural(backup.bangs.length, "custom bang")}. Saved in this browser.`,
+        );
         return;
       }
-      if (!window.confirm(`Add ${plural(backup.bangs.length, 'bang')}? Imported bangs replace your bangs with the same shortcut.`)) return;
-      const imported = new Set(backup.bangs.map(b => b.t));
-      const list = [...backup.bangs.filter(b => { const builtIn = builtInBang(b.t); return !builtIn || !sameBang(b, builtIn); }), ...userBangs.filter(b => !imported.has(b.t))];
-      input.value = '';
-      saveUserBangs(list, `Imported ${plural(backup.bangs.length, 'bang')}. Saved in this browser.`);
-    } catch (e) { status.textContent = `Import failed: ${(e as Error).message}`; }
-    finally { fileInput.value = ''; }
+      if (
+        !window.confirm(
+          `Add ${plural(backup.bangs.length, "bang")}? Imported bangs replace your bangs with the same shortcut.`,
+        )
+      )
+        return;
+      const imported = new Set(backup.bangs.map((b) => b.t));
+      const list = [
+        ...backup.bangs.filter((b) => {
+          const builtIn = builtInBang(b.t);
+          return !builtIn || !sameBang(b, builtIn);
+        }),
+        ...userBangs.filter((b) => !imported.has(b.t)),
+      ];
+      input.value = "";
+      saveUserBangs(
+        list,
+        `Imported ${plural(backup.bangs.length, "bang")}. Saved in this browser.`,
+      );
+    } catch (e) {
+      status.textContent = `Import failed: ${(e as Error).message}`;
+    } finally {
+      fileInput.value = "";
+    }
   });
-  app.querySelector('#export-bangs')!.addEventListener('click', () => {
+  app.querySelector("#export-bangs")!.addEventListener("click", () => {
     const backup = exportBackup();
-    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
-    const link = document.createElement('a'); link.href = url; link.download = 'unduck-backup.json'; link.click();
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "unduck-backup.json";
+    link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    status.textContent = `Exported ${plural(backup.bangs.length, 'custom bang')}, ${plural(backup.disabled.length, 'disabled bang')} and your default search engine.`;
+    status.textContent = `Exported ${plural(backup.bangs.length, "custom bang")}, ${plural(backup.disabled.length, "disabled bang")} and your default search engine.`;
   });
 
   const input = app.querySelector<HTMLInputElement>("#bang-filter")!;
@@ -189,7 +294,10 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
     writeDisabledBangs(disabled);
   }
   function updateSelection() {
-    const enabledCount = bangs.reduce((total, bang) => total + Number(!disabled.has(bang.t)), 0);
+    const enabledCount = bangs.reduce(
+      (total, bang) => total + Number(!disabled.has(bang.t)),
+      0,
+    );
     selectAll.checked = enabledCount === bangs.length;
     selectAll.indeterminate = enabledCount > 0 && enabledCount < bangs.length;
   }
@@ -214,20 +322,30 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
       checkbox.checked = !disabled.has(bang.t);
       checkbox.setAttribute("aria-label", `Enable !${bang.t}`);
       checkbox.addEventListener("change", () => {
-        if (checkbox.checked) disabled.delete(bang.t); else disabled.add(bang.t);
+        if (checkbox.checked) disabled.delete(bang.t);
+        else disabled.add(bang.t);
         saveSelection();
         updateSelection();
         onChange();
       });
       selection.append(checkbox);
-      for (const value of [`!${bang.t}`, bang.s, bang.d, bang.c || "—", bang.sc || "—", bang.u]) {
+      for (const value of [
+        `!${bang.t}`,
+        bang.s,
+        bang.d,
+        bang.c || "—",
+        bang.sc || "—",
+        bang.u,
+      ]) {
         const cell = document.createElement("td");
         cell.textContent = value;
         row.append(cell);
       }
       const badges = [
         ...(defaultShortcut === bang.t ? ["default"] : []),
-        ...(userBangs.includes(bang) ? [builtInShortcuts.has(bang.t) ? "modified" : "custom"] : []),
+        ...(userBangs.includes(bang)
+          ? [builtInShortcuts.has(bang.t) ? "modified" : "custom"]
+          : []),
       ];
       for (const label of badges) {
         const badge = document.createElement("span");
@@ -265,7 +383,9 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
   function updateList(resetPage = true) {
     const term = input.value.trim().toLowerCase().replace(/^!/, "");
     filtered = bangs.filter((bang) =>
-      [bang.t, bang.s, bang.d, bang.c, bang.sc, bang.u].some((value) => value?.toLowerCase().includes(term)),
+      [bang.t, bang.s, bang.d, bang.c, bang.sc, bang.u].some((value) =>
+        value?.toLowerCase().includes(term),
+      ),
     );
     if (sortKey) {
       const key = sortKey;
@@ -273,29 +393,58 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
       filtered.sort((a, b) => {
         if (key === "enabled") {
           // Ascending puts disabled (false) before enabled (true).
-          return multiplier * (Number(!disabled.has(a.t)) - Number(!disabled.has(b.t)));
+          return (
+            multiplier *
+            (Number(!disabled.has(a.t)) - Number(!disabled.has(b.t)))
+          );
         }
-        return multiplier * (a[key] ?? "").localeCompare(b[key] ?? "", undefined, { sensitivity: "base", numeric: true });
+        return (
+          multiplier *
+          (a[key] ?? "").localeCompare(b[key] ?? "", undefined, {
+            sensitivity: "base",
+            numeric: true,
+          })
+        );
       });
     }
     if (resetPage) page = 0;
-    page = Math.min(page, Math.max(0, Math.ceil(filtered.length / pageSize) - 1));
+    page = Math.min(
+      page,
+      Math.max(0, Math.ceil(filtered.length / pageSize) - 1),
+    );
     renderRows();
   }
   input.addEventListener("input", () => updateList());
-  sortButtons.forEach((button) => button.addEventListener("click", () => {
-    const key = button.dataset.key as SortKey;
-    ascending = sortKey === key ? !ascending : true;
-    sortKey = key;
-    sortButtons.forEach((headerButton) => {
-      const active = headerButton === button;
-      headerButton.closest("th")!.setAttribute("aria-sort", active ? (ascending ? "ascending" : "descending") : "none");
-      headerButton.querySelector("span")!.textContent = active ? (ascending ? " ↑" : " ↓") : " ↕";
-    });
-    updateList();
-  }));
-  previous.addEventListener("click", () => { page--; renderRows(); });
-  next.addEventListener("click", () => { page++; renderRows(); });
+  sortButtons.forEach((button) =>
+    button.addEventListener("click", () => {
+      const key = button.dataset.key as SortKey;
+      ascending = sortKey === key ? !ascending : true;
+      sortKey = key;
+      sortButtons.forEach((headerButton) => {
+        const active = headerButton === button;
+        headerButton
+          .closest("th")!
+          .setAttribute(
+            "aria-sort",
+            active ? (ascending ? "ascending" : "descending") : "none",
+          );
+        headerButton.querySelector("span")!.textContent = active
+          ? ascending
+            ? " ↑"
+            : " ↓"
+          : " ↕";
+      });
+      updateList();
+    }),
+  );
+  previous.addEventListener("click", () => {
+    page--;
+    renderRows();
+  });
+  next.addEventListener("click", () => {
+    page++;
+    renderRows();
+  });
   input.value = filter;
   updateList();
 }
