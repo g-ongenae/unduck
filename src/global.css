@@ -238,3 +238,25 @@ textarea {
 .bang-sort:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 .bangs-page .bang-select-all { display: flex; align-items: center; gap: 8px; margin: 0; }
 .bang-table td:last-child { min-width: auto; text-align: center; }
+
+.settings-link {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  font-size: 24px;
+  text-decoration: none;
+}
+.settings-link:hover { background: #f0f0f0; }
+.settings-link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.settings-page { justify-content: flex-start; }
+.settings-page .content-container { width: 100%; text-align: left; }
+.settings-page h1 { margin-top: 24px; }
+@media (prefers-color-scheme: dark) {
+  .settings-link:hover { background: #222; }
+}
