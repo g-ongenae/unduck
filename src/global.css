@@ -155,9 +155,6 @@ textarea {
     color: #ddd;
   }
 
-  #app {
-    background-color: #131313;
-  }
 
   a {
     color: #a9a9a9;
@@ -237,7 +234,7 @@ textarea {
 .bang-sort:hover { text-decoration: underline; }
 .bang-sort:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 .bangs-section .bang-select-all { display: flex; align-items: center; gap: 8px; margin: 0; }
-.bang-table td:last-child { min-width: auto; text-align: center; }
+.bang-table td:nth-child(7) { min-width: auto; text-align: center; }
 
 .settings-link {
   position: absolute;
@@ -305,3 +302,22 @@ textarea {
 }
 
 .bang-select-all { white-space: nowrap; }
+
+.bang-badge { display: inline-block; padding: 0 6px; border-radius: 999px; background: #eee; font-family: system-ui, sans-serif; font-size: 11px; }
+.bang-table td.bang-row-actions { min-width: auto; width: 1%; text-align: center; }
+.settings-page .bang-row-actions button { border-color: transparent; padding: 2px 6px; font-size: 16px; line-height: 1; }
+.settings-page .bang-row-actions button:hover, .settings-page .bang-row-actions button:focus-visible { border-color: #bbb; }
+.bang-badge-default { background: #dbeafe; color: #1e3a8a; }
+.panel-secondary { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; padding-top: 24px; border-top: 1px solid #ddd; }
+.panel-secondary[hidden], .panel-secondary [hidden] { display: none; }
+.settings-page .danger { color: #b42318; border-color: #f0b8b3; }
+.settings-page button:disabled { opacity: .6; cursor: default; }
+#default-status.warning { color: #b42318; }
+@media (prefers-color-scheme: dark) {
+  .bang-badge { background: #333; }
+  .bang-badge-default { background: #1e3a8a; color: #dbeafe; }
+  .panel-secondary { border-color: #444; }
+  .settings-page .danger { color: #f97066; border-color: #7a2e27; }
+  #default-status.warning { color: #f97066; }
+}
+.panel-fields input:read-only { opacity: .6; cursor: not-allowed; }
