@@ -1,6 +1,7 @@
 import {
   DEFAULT_BANG_KEY,
   findEnabledBang,
+  mainShortcut,
   readDisabledBangs,
   readUserBangs,
   resolveDefaultBang,
@@ -90,14 +91,20 @@ export function renderSettingsPage() {
     const { bang, requested, usable } = resolveDefaultBang();
     defaultInput.value = requested;
     defaultStatus.classList.toggle("warning", !usable);
-    const problem = readDisabledBangs().has(requested)
+    // Aliases such as ddg (for dax) follow their main shortcut's enabled state.
+    const main = mainShortcut(requested);
+    const name =
+      main === requested
+        ? `!${requested}`
+        : `!${requested} (alias of !${main})`;
+    const problem = readDisabledBangs().has(main)
       ? "is disabled"
       : "no longer exists";
     defaultStatus.textContent = usable
       ? message
-      : requested === bang.t
-        ? `!${requested} ${problem}, but searches still fall back to it. Choose another default or enable it.`
-        : `!${requested} ${problem}, so searches use !${bang.t} instead. Choose another default or enable it.`;
+      : main === bang.t
+        ? `${name} ${problem}, but searches still fall back to it. Choose another default or enable !${main}.`
+        : `${name} ${problem}, so searches use !${bang.t} instead. Choose another default or enable !${main}.`;
   }
 
   const filter =
