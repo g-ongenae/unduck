@@ -22,6 +22,7 @@ function noSearchDefaultPageRender() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
   app.innerHTML = `
     <div class="page">
+      <a class="settings-link" href="?page=settings" aria-label="Settings" title="Settings">⚙️</a>
       <div class="content-container">
         <h1>Und*ck</h1>
         <p>DuckDuckGo's bang redirects are too slow. Add the following URL as a custom search engine to your browser. Enables <a href="https://duckduckgo.com/bang.html" target="_blank">all of DuckDuckGo's bangs.</a></p>
@@ -36,6 +37,33 @@ function noSearchDefaultPageRender() {
             <img src="${import.meta.env.BASE_URL}clipboard.svg" alt="Copy" />
           </button>
         </div>
+
+      </div>
+    </div>
+  `;
+
+  const copyButton = app.querySelector<HTMLButtonElement>(".copy-button")!;
+  const copyIcon = copyButton.querySelector("img")!;
+  const urlInput = app.querySelector<HTMLInputElement>(".url-input")!;
+
+  copyButton.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(urlInput.value);
+    copyIcon.src = `${import.meta.env.BASE_URL}clipboard-check.svg`;
+
+    setTimeout(() => {
+      copyIcon.src = `${import.meta.env.BASE_URL}clipboard.svg`;
+    }, 2000);
+  });
+}
+
+function renderSettingsPage() {
+  document.title = "Settings | Und*ck";
+  const app = document.querySelector<HTMLDivElement>("#app")!;
+  app.innerHTML = `
+    <main class="page settings-page">
+      <div class="content-container">
+        <a href="./">← Back to home</a>
+        <h1>Settings</h1>
         <section class="settings">
           <h2>Default search engine</h2>
           <p>Choose a bang shortcut for searches without a bang. This setting is saved in this browser.</p>
@@ -57,7 +85,7 @@ function noSearchDefaultPageRender() {
           <p id="bang-status" role="status"></p>
         </section>
       </div>
-    </div>
+    </main>
   `;
 
   const defaultInput = app.querySelector<HTMLInputElement>("#default-bang")!;
@@ -107,18 +135,6 @@ function noSearchDefaultPageRender() {
     status.textContent = "Using built-in bangs. Your editor contents have not been saved.";
   });
 
-  const copyButton = app.querySelector<HTMLButtonElement>(".copy-button")!;
-  const copyIcon = copyButton.querySelector("img")!;
-  const urlInput = app.querySelector<HTMLInputElement>(".url-input")!;
-
-  copyButton.addEventListener("click", async () => {
-    await navigator.clipboard.writeText(urlInput.value);
-    copyIcon.src = `${import.meta.env.BASE_URL}clipboard-check.svg`;
-
-    setTimeout(() => {
-      copyIcon.src = `${import.meta.env.BASE_URL}clipboard.svg`;
-    }, 2000);
-  });
 }
 
 const LS_DEFAULT_BANG = localStorage.getItem("default-bang") ?? "ddg";
@@ -165,7 +181,10 @@ function doRedirect() {
   window.location.replace(searchUrl);
 }
 
-if (new URLSearchParams(window.location.search).get("page") === "bangs") {
+const page = new URLSearchParams(window.location.search).get("page");
+if (page === "settings") {
+  renderSettingsPage();
+} else if (page === "bangs") {
   renderBangsPage();
 } else {
   doRedirect();

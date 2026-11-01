@@ -16,7 +16,7 @@ export function renderBangsPage() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
   app.innerHTML = `
     <main class="bangs-page">
-      <a href="./">← Back to settings</a>
+      <a href="?page=settings">← Back to settings</a>
       <h1>Built-in bangs</h1>
       <p>Browse the default list included with Und*ck. Use a shortcut such as <code>!gh</code> before your search terms. Search URLs use <code>{{{s}}}</code> for those terms.</p>
       <p>Selections apply to the entire built-in list and are saved in this browser.</p>
