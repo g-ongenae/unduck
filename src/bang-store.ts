@@ -90,6 +90,10 @@ export const sameBang = (a: Bang, b: Bang) =>
   a.u === b.u &&
   aliasesOf(a).join(" ") === aliasesOf(b).join(" ");
 
+/** Migrating it compares entries with the built-ins' names and categories, which must be loaded first. */
+export const hasLegacyCatalog = () =>
+  localStorage.getItem(LEGACY_CATALOG_KEY) !== null;
+
 // Imports used to replace the whole catalog under LEGACY_CATALOG_KEY. Keep that behavior by turning
 // changed entries into overrides and disabling built-ins the imported catalog left out.
 function migrateLegacyCatalog() {

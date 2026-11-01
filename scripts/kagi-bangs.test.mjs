@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeBangs, kagiBangs } from "./kagi-bangs.mjs";
+import { normalizeBangs, kagiBangs, splitBangs } from "./kagi-bangs.mjs";
 
 const ddg = {
   t: "ddg",
@@ -66,8 +66,23 @@ test("rejects invalid catalogs, duplicate shortcuts, and a missing fallback", ()
     assert.throws(() => normalizeBangs(data));
 });
 
-test("only resolves the virtual catalog module", () => {
+test("splits names and categories out of the redirect catalog", () => {
+  const entry = { t: "a", s: "A", d: "a.org", u: "https://a.org", c: "Tech" };
+  assert.deepEqual(splitBangs([entry, { ...entry, t: "b", c: "" }]), {
+    bangs: [
+      { t: "a", d: "a.org", u: "https://a.org" },
+      { t: "b", d: "a.org", u: "https://a.org" },
+    ],
+    details: [{ s: "A", c: "Tech" }, { s: "A" }],
+  });
+});
+
+test("only resolves the virtual catalog modules", () => {
   const plugin = kagiBangs();
   assert.equal(plugin.resolveId("./other"), undefined);
   assert.equal(plugin.resolveId("virtual:kagi-bangs"), "\0virtual:kagi-bangs");
+  assert.equal(
+    plugin.resolveId("virtual:kagi-bang-details"),
+    "\0virtual:kagi-bang-details",
+  );
 });

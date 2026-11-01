@@ -52,20 +52,36 @@ export function normalizeBangs(data) {
   return bangs;
 }
 
+// Redirects only load what they need; names and categories are only shown on the settings page.
+export function splitBangs(bangs) {
+  return {
+    bangs: bangs.map(({ s: _s, c: _c, sc: _sc, ...redirect }) => redirect),
+    details: bangs.map(({ s, c, sc }) => ({
+      s,
+      ...(c && { c }),
+      ...(sc && { sc }),
+    })),
+  };
+}
+
 // Engines parse JSON much faster than an equivalent object literal.
 const jsonModule = (name, value) =>
   `export const ${name} = JSON.parse(${JSON.stringify(JSON.stringify(value))});`;
 
 export function kagiBangs() {
-  const id = "virtual:kagi-bangs";
+  const ids = {
+    "virtual:kagi-bangs": "bangs",
+    "virtual:kagi-bang-details": "details",
+  };
   let catalog;
   return {
     name: "kagi-bangs",
     resolveId(source) {
-      if (source === id) return `\0${id}`;
+      if (source in ids) return `\0${source}`;
     },
     async load(moduleId) {
-      if (moduleId !== `\0${id}`) return;
+      const name = ids[moduleId.slice(1)];
+      if (!moduleId.startsWith("\0") || !name) return;
       catalog ??= (async () => {
         const response = await fetch(source, {
           signal: AbortSignal.timeout(30_000),
@@ -74,9 +90,9 @@ export function kagiBangs() {
           throw new Error(
             `Could not download Kagi bangs: HTTP ${response.status}`,
           );
-        return normalizeBangs(await response.json());
+        return splitBangs(normalizeBangs(await response.json()));
       })();
-      return jsonModule("bangs", await catalog);
+      return jsonModule(name, (await catalog)[name]);
     },
   };
 }
