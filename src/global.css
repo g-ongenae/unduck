@@ -304,12 +304,20 @@ textarea {
 .bang-select-all { white-space: nowrap; }
 
 .bang-badge { display: inline-block; padding: 0 6px; border-radius: 999px; background: #eee; font-family: system-ui, sans-serif; font-size: 11px; }
-.bang-table td.bang-row-actions { min-width: auto; white-space: nowrap; }
-.bang-row-actions button { margin-right: 4px; padding: 2px 8px; font-size: 13px; }
-.bang-row-actions button:disabled { opacity: .5; cursor: default; }
+.bang-table td.bang-row-actions { min-width: auto; width: 1%; text-align: center; }
+.settings-page .bang-row-actions button { border-color: transparent; padding: 2px 6px; font-size: 16px; line-height: 1; }
+.settings-page .bang-row-actions button:hover, .settings-page .bang-row-actions button:focus-visible { border-color: #bbb; }
+.bang-badge-default { background: #dbeafe; color: #1e3a8a; }
+.panel-secondary { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; padding-top: 24px; border-top: 1px solid #ddd; }
+.panel-secondary[hidden], .panel-secondary [hidden] { display: none; }
+.settings-page .danger { color: #b42318; border-color: #f0b8b3; }
+.settings-page button:disabled { opacity: .6; cursor: default; }
 #default-status.warning { color: #b42318; }
 @media (prefers-color-scheme: dark) {
   .bang-badge { background: #333; }
+  .bang-badge-default { background: #1e3a8a; color: #dbeafe; }
+  .panel-secondary { border-color: #444; }
+  .settings-page .danger { color: #f97066; border-color: #7a2e27; }
   #default-status.warning { color: #f97066; }
 }
 .panel-fields input:read-only { opacity: .6; cursor: not-allowed; }

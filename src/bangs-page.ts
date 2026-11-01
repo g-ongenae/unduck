@@ -26,7 +26,7 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
           <thead><tr>
             ${([["t", "Shortcut"], ["s", "Site"], ["d", "Domain"], ["c", "Category"], ["sc", "Subcategory"], ["u", "Search URL"]]).map(([key, label]) => `<th scope="col" aria-sort="none"><button type="button" class="bang-sort" data-key="${key}">${label}<span aria-hidden="true"> ↕</span></button></th>`).join("")}
             <th scope="col" aria-sort="none"><div class="bang-select-all"><button type="button" class="bang-sort" data-key="enabled">Enabled<span aria-hidden="true"> ↕</span></button><input id="select-all" type="checkbox" aria-label="Enable all bangs" /></div></th>
-            <th scope="col">Actions</th>
+            <th scope="col"><span class="sr-only">Actions</span></th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -49,6 +49,7 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
           </div>
           <p id="add-error" role="alert"></p>
           <div class="panel-actions"><button type="button" id="cancel-panel">Cancel</button><button type="submit" class="primary" id="save-bang">Add bang</button></div>
+          <div class="panel-secondary" id="panel-secondary"><button type="button" id="default-panel"></button><button type="button" id="remove-panel" class="danger"></button></div>
         </form>
       </dialog>
     </section>`;
@@ -60,6 +61,9 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
   const shortcutInput = app.querySelector<HTMLInputElement>('#bang-shortcut')!;
   const status = app.querySelector<HTMLElement>('#list-status')!;
   const error = app.querySelector<HTMLElement>('#add-error')!;
+  const secondary = app.querySelector<HTMLElement>('#panel-secondary')!;
+  const defaultButton = app.querySelector<HTMLButtonElement>('#default-panel')!;
+  const removeButton = app.querySelector<HTMLButtonElement>('#remove-panel')!;
   let editing: Bang | null = null;
   const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
@@ -80,8 +84,22 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
     for (const key of ['t', 's', 'd', 'c', 'sc', 'u'] as const) (form.elements.namedItem(key) as HTMLInputElement).value = bang?.[key] ?? '';
     // A built-in can only be overridden under its own shortcut; rename by adding a new bang instead.
     shortcutInput.readOnly = !!bang && builtInShortcuts.has(bang.t);
+    secondary.hidden = !bang;
+    if (bang) {
+      updateDefaultButton(bang);
+      const isUserBang = userBangs.includes(bang);
+      removeButton.hidden = !isUserBang;
+      removeButton.textContent = builtInShortcuts.has(bang.t) ? 'Reset to built-in' : 'Delete';
+    }
     dialog.showModal();
   }
+  function updateDefaultButton(bang: Bang) {
+    const isDefault = readDefaultShortcut() === bang.t;
+    defaultButton.disabled = isDefault;
+    defaultButton.textContent = isDefault ? 'Default search engine ✓' : 'Use as default';
+  }
+  defaultButton.addEventListener('click', () => { if (editing) { useAsDefault(editing); updateDefaultButton(editing); } });
+  removeButton.addEventListener('click', () => { if (editing && removeUserBang(editing)) dialog.close(); });
   app.querySelector('#add-bang')!.addEventListener('click', () => openDialog(null));
   for (const id of ['close-panel', 'cancel-panel']) app.querySelector(`#${id}`)!.addEventListener('click', () => dialog.close());
   form.addEventListener('submit', event => {
@@ -113,9 +131,10 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
   function removeUserBang(bang: Bang) {
     const builtIn = builtInBang(bang.t);
     const question = builtIn ? `Reset !${bang.t} to the built-in ${builtIn.s} bang?` : `Delete !${bang.t}?`;
-    if (!window.confirm(question)) return;
+    if (!window.confirm(question)) return false;
     if (!builtIn && disabled.delete(bang.t)) saveSelection();
     saveUserBangs(userBangs.filter(b => b.t !== bang.t), builtIn ? `Reset !${bang.t} to the built-in bang.` : `Deleted !${bang.t}.`);
+    return true;
   }
 
   const fileInput = app.querySelector<HTMLInputElement>('#import-file')!;
@@ -206,28 +225,25 @@ export function renderBuiltInBangs(app: HTMLElement, { filter = "", onChange = (
         cell.textContent = value;
         row.append(cell);
       }
-      const isUserBang = userBangs.includes(bang);
-      if (isUserBang) {
+      const badges = [
+        ...(defaultShortcut === bang.t ? ["default"] : []),
+        ...(userBangs.includes(bang) ? [builtInShortcuts.has(bang.t) ? "modified" : "custom"] : []),
+      ];
+      for (const label of badges) {
         const badge = document.createElement("span");
-        badge.className = "bang-badge";
-        badge.textContent = builtInShortcuts.has(bang.t) ? "modified" : "custom";
+        badge.className = `bang-badge bang-badge-${label}`;
+        badge.textContent = label;
         row.firstElementChild!.append(" ", badge);
       }
       const actions = document.createElement("td");
       actions.className = "bang-row-actions";
-      const action = (label: string, handler: () => void, disabledButton = false) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.textContent = label;
-        button.disabled = disabledButton;
-        button.setAttribute("aria-label", `${label} !${bang.t}`);
-        button.addEventListener("click", handler);
-        actions.append(button);
-      };
-      action("Edit", () => openDialog(bang));
-      const isDefault = defaultShortcut === bang.t;
-      action(isDefault ? "Default" : "Use as default", () => useAsDefault(bang), isDefault);
-      if (isUserBang) action(builtInShortcuts.has(bang.t) ? "Reset" : "Delete", () => removeUserBang(bang));
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.title = "Edit";
+      edit.setAttribute("aria-label", `Edit !${bang.t}`);
+      edit.innerHTML = '<span aria-hidden="true">🖊️</span>';
+      edit.addEventListener("click", () => openDialog(bang));
+      actions.append(edit);
       row.append(selection, actions);
       fragment.append(row);
     }
