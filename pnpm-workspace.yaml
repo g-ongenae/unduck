@@ -1,0 +1,5 @@
+overrides:
+  # workbox-build bundles the service worker with Rollup. Rollup's native
+  # x64 binary requires AVX and crashes with SIGILL (exit 132) on CPUs
+  # without it, so use the portable WebAssembly build instead.
+  rollup: npm:@rollup/wasm-node@^4.67.2
