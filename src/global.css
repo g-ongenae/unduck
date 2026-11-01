@@ -602,6 +602,12 @@ textarea {
 .panel-fields .alias-add input {
   margin-top: 0;
 }
+.alias-add button {
+  white-space: nowrap;
+}
+.panel-fields small[hidden] {
+  display: none;
+}
 .panel-actions {
   justify-content: flex-end;
   margin-top: 24px;
