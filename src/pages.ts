@@ -1,7 +1,9 @@
 import {
+  BLOCK_DISABLED_BANGS_KEY,
   DEFAULT_BANG_KEY,
   findEnabledBang,
   mainShortcut,
+  readBlockDisabledBangs,
   readDisabledBangs,
   readUserBangs,
   resolveDefaultBang,
@@ -80,10 +82,35 @@ export function renderSettingsPage() {
           <button type="submit">Save</button>
           <span id="default-status" role="status"></span>
         </form>
+        <div class="disabled-bangs-setting">
+          <label><input id="block-disabled-bangs" type="checkbox" aria-describedby="disabled-bangs-help" /> Prevent search engines from using disabled bangs</label>
+          <span class="setting-help">
+            <button type="button" class="setting-help-button" aria-label="About disabled bangs" aria-describedby="disabled-bangs-help">ⓘ</button>
+            <span id="disabled-bangs-help" class="setting-tooltip" role="tooltip">When enabled, disabled shortcuts such as !scribd are sent as plain text (scribd). Turn this off to forward them unchanged; your search engine may still execute them. Saved automatically on this browser.</span>
+          </span>
+        </div>
         <div id="built-in-bangs"></div>
       </div>
     </main>
   `;
+
+  const help = app.querySelector<HTMLElement>(".setting-help")!;
+  help.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") help.dataset.dismissed = "true";
+  });
+  for (const event of ["mouseleave", "focusout"])
+    help.addEventListener(event, () => delete help.dataset.dismissed);
+
+  const blockDisabled = app.querySelector<HTMLInputElement>(
+    "#block-disabled-bangs",
+  )!;
+  blockDisabled.checked = readBlockDisabledBangs();
+  blockDisabled.addEventListener("change", () => {
+    localStorage.setItem(
+      BLOCK_DISABLED_BANGS_KEY,
+      String(blockDisabled.checked),
+    );
+  });
 
   const defaultInput = app.querySelector<HTMLInputElement>("#default-bang")!;
   const defaultStatus = app.querySelector<HTMLSpanElement>("#default-status")!;

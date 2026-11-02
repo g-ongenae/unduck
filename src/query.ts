@@ -2,11 +2,13 @@ export type ParsedQuery = { shortcut?: string; terms: string };
 
 /**
  * Finds the first whitespace-delimited `!bang` token, or a `bang!` token at the start or end of the
- * query, that `isBang` accepts. Unrecognized bangs are left in the search terms.
+ * query, that `isBang` accepts. Disabled bangs lose their marker so a downstream
+ * search engine cannot execute them. Unrecognized bangs stay in the search terms.
  */
 export function parseQuery(
   query: string,
   isBang: (shortcut: string) => boolean,
+  isDisabled: (shortcut: string) => boolean = () => false,
 ): ParsedQuery {
   const tokens = query.trim().split(/\s+/).filter(Boolean);
   const accepts = (index: number, pattern: RegExp) => {
@@ -18,6 +20,10 @@ export function parseQuery(
     [0, /^([^\s!]+)!$/] as const,
     [tokens.length - 1, /^([^\s!]+)!$/] as const,
   ];
+  for (const [index, pattern] of candidates) {
+    const match = tokens[index]?.match(pattern);
+    if (match && isDisabled(match[1].toLowerCase())) tokens[index] = match[1];
+  }
   for (const [index, pattern] of candidates) {
     const shortcut = accepts(index, pattern);
     if (shortcut)
