@@ -40,6 +40,18 @@ if desired.
 The OpenSearch definition uses the deployed GitHub Pages URL. If you host a fork
 elsewhere, update the URLs in `public/opensearch.xml`.
 
+## Import links
+
+Settings opened with `#import=` followed by a backup's JSON in base64url restore that
+backup after you confirm, as the **Import** button does, so a setup script can bring the
+same bangs to every browser:
+
+```
+https://g-ongenae.github.io/unduck/?page=settings#import=eyJ2ZXJzaW9uIjox...
+```
+
+The hash never reaches the server, and is removed from the address bar before the import.
+
 ## How is it that much faster?
 
 DuckDuckGo does their redirects server side. Their DNS is...not always great. Result is that it often takes ages.

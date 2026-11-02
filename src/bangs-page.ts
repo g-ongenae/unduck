@@ -17,6 +17,7 @@ import {
   writeUserBangs,
   type Bang,
 } from "./bang-store";
+import { IMPORT_HASH, decodeBackupLink } from "./backup-link";
 
 type Options = { filter?: string; onChange?: () => void };
 
@@ -300,48 +301,51 @@ export function renderBuiltInBangs(
   app
     .querySelector("#import-bangs")!
     .addEventListener("click", () => fileInput.click());
+  /** Restores a full backup, or adds a plain list of bangs, after the user confirms. */
+  function applyBackup(backup: ReturnType<typeof parseBackup>) {
+    if (backup.disabled && backup.defaultBang) {
+      if (
+        !window.confirm(
+          `Replace your bangs, enabled bangs and default search engine with this backup (${plural(backup.bangs.length, "custom bang")})?`,
+        )
+      )
+        return;
+      disabled.clear();
+      for (const t of backup.disabled) disabled.add(t);
+      saveSelection();
+      localStorage.setItem(DEFAULT_BANG_KEY, backup.defaultBang);
+      input.value = "";
+      saveUserBangs(
+        backup.bangs,
+        `Restored backup with ${plural(backup.bangs.length, "custom bang")}. Saved in this browser.`,
+      );
+      return;
+    }
+    if (
+      !window.confirm(
+        `Add ${plural(backup.bangs.length, "bang")}? Imported bangs replace your bangs with the same shortcut.`,
+      )
+    )
+      return;
+    const imported = new Set(backup.bangs.map((b) => b.t));
+    const list = [
+      ...backup.bangs.filter((b) => {
+        const builtIn = builtInBang(overriddenShortcut(b) ?? "");
+        return !builtIn || !sameBang(b, builtIn);
+      }),
+      ...userBangs.filter((b) => !imported.has(b.t)),
+    ];
+    input.value = "";
+    saveUserBangs(
+      list,
+      `Imported ${plural(backup.bangs.length, "bang")}. Saved in this browser.`,
+    );
+  }
   fileInput.addEventListener("change", async () => {
     const file = fileInput.files?.[0];
     if (!file) return;
     try {
-      const backup = parseBackup(JSON.parse(await file.text()));
-      if (backup.disabled && backup.defaultBang) {
-        if (
-          !window.confirm(
-            `Replace your bangs, enabled bangs and default search engine with this backup (${plural(backup.bangs.length, "custom bang")})?`,
-          )
-        )
-          return;
-        disabled.clear();
-        for (const t of backup.disabled) disabled.add(t);
-        saveSelection();
-        localStorage.setItem(DEFAULT_BANG_KEY, backup.defaultBang);
-        input.value = "";
-        saveUserBangs(
-          backup.bangs,
-          `Restored backup with ${plural(backup.bangs.length, "custom bang")}. Saved in this browser.`,
-        );
-        return;
-      }
-      if (
-        !window.confirm(
-          `Add ${plural(backup.bangs.length, "bang")}? Imported bangs replace your bangs with the same shortcut.`,
-        )
-      )
-        return;
-      const imported = new Set(backup.bangs.map((b) => b.t));
-      const list = [
-        ...backup.bangs.filter((b) => {
-          const builtIn = builtInBang(overriddenShortcut(b) ?? "");
-          return !builtIn || !sameBang(b, builtIn);
-        }),
-        ...userBangs.filter((b) => !imported.has(b.t)),
-      ];
-      input.value = "";
-      saveUserBangs(
-        list,
-        `Imported ${plural(backup.bangs.length, "bang")}. Saved in this browser.`,
-      );
+      applyBackup(parseBackup(JSON.parse(await file.text())));
     } catch (e) {
       status.textContent = `Import failed: ${(e as Error).message}`;
     } finally {
@@ -554,4 +558,20 @@ export function renderBuiltInBangs(
   });
   input.value = filter;
   updateList();
+
+  // An `#import=` link, such as one a setup script opens, restores the backup it carries.
+  const hash = window.location.hash;
+  if (hash.startsWith(IMPORT_HASH)) {
+    // Drop the backup from the address bar so reloading or sharing the page doesn't import it again.
+    window.history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search,
+    );
+    try {
+      applyBackup(parseBackup(decodeBackupLink(hash)));
+    } catch (e) {
+      status.textContent = `Import failed: ${(e as Error).message}`;
+    }
+  }
 }
