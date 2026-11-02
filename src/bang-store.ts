@@ -27,6 +27,9 @@ export const DISABLED_BANGS_KEY = "disabled-built-in-bangs";
 /** Built-in shortcuts at the time the user last saved a partial selection. */
 const KNOWN_BUILT_INS_KEY = "known-built-in-bangs";
 export const DEFAULT_BANG_KEY = "default-bang";
+export const BLOCK_DISABLED_BANGS_KEY = "block-disabled-bangs";
+export const readBlockDisabledBangs = () =>
+  localStorage.getItem(BLOCK_DISABLED_BANGS_KEY) !== "false";
 export const FALLBACK_BANG = "ddg";
 
 function readJson(key: string): unknown {

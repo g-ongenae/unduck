@@ -2,6 +2,8 @@ import { loadBangDetails } from "./bang";
 import {
   findEnabledBang,
   hasLegacyCatalog,
+  mainShortcut,
+  readBlockDisabledBangs,
   readDisabledBangs,
   readUserBangs,
   resolveDefaultBang,
@@ -30,6 +32,10 @@ function getRedirectUrl(query: string) {
     (t) =>
       (t === "bang" && !userCatalogBang) ||
       !!findEnabledBang(t, userBangs, disabled),
+    (t) =>
+      readBlockDisabledBangs() &&
+      !(t === "bang" && !userCatalogBang) &&
+      disabled.has(mainShortcut(t, userBangs)),
   );
   if (shortcut === "bang" && !userCatalogBang) {
     void showSettings(terms);

@@ -431,6 +431,40 @@ textarea {
 .default-row label {
   font-weight: 600;
 }
+.disabled-bangs-setting {
+  position: relative;
+  margin-top: 20px;
+}
+.settings-page .setting-help-button {
+  border: 0;
+  padding: 4px 6px;
+  cursor: help;
+}
+.setting-tooltip {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  width: min(360px, calc(100vw - 48px));
+  padding: 12px;
+  border: 1px solid #bbb;
+  border-radius: 5px;
+  background: #fff;
+  color: #222;
+  box-shadow: 0 4px 12px #0002;
+  font-size: 14px;
+}
+.setting-help:not([data-dismissed]):is(:hover, :focus-within) .setting-tooltip {
+  display: block;
+}
+@media (prefers-color-scheme: dark) {
+  .setting-tooltip {
+    background: #222;
+    color: #eee;
+    border-color: #555;
+  }
+}
 .default-row input {
   width: 90px;
   min-width: 0;
