@@ -11,25 +11,7 @@ import {
 import { renderBuiltInBangs } from "./bangs-page";
 import "./global.css";
 
-const FONT_URL =
-  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap";
-
-// Kept out of index.html so search redirects never wait on third-party requests.
-function loadExternalAssets() {
-  const font = Object.assign(document.createElement("link"), {
-    rel: "stylesheet",
-    href: FONT_URL,
-  });
-  const analytics = Object.assign(document.createElement("script"), {
-    defer: true,
-    src: "https://plausible.io/js/script.js",
-  });
-  analytics.dataset.domain = "unduck.link";
-  document.head.append(font, analytics);
-}
-
 export function renderHomePage() {
-  loadExternalAssets();
   const app = document.querySelector<HTMLDivElement>("#app")!;
   app.innerHTML = `
     <div class="page">
@@ -68,7 +50,6 @@ export function renderHomePage() {
 }
 
 export function renderSettingsPage() {
-  loadExternalAssets();
   document.title = "Settings | Und*ck";
   const app = document.querySelector<HTMLDivElement>("#app")!;
   app.innerHTML = `
