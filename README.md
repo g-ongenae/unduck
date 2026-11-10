@@ -1,59 +1,45 @@
 # Unduck
 
-DuckDuckGo's bang redirects are too slow. Add the following URL as a custom search engine to your browser. Uses the community-maintained [Kagi bangs catalog](https://github.com/kagisearch/bangs) for fast client-side redirects.
+Fork of [T3-Content/unduck](https://github.com/T3-Content/unduck), focused on:
+
+1. **Simplicity and configurability**: keep only the bangs you use, and shape them to your needs.
+2. **Privacy**: redirects run in your browser, with no analytics and no server.
+3. **Speed**: no round-trip to a search engine before the redirect.
+
+Add this URL as a custom search engine in your browser:
 
 ```
 https://g-ongenae.github.io/unduck/?q=%s
 ```
 
-## Development
+On Firefox, you can instead right-click the address bar on
+https://g-ongenae.github.io/unduck/ and choose **Add “Unduck”**.
 
-Install dependencies with `pnpm install`, then start the development server with `pnpm dev`.
+## Comparison with others
 
-- `pnpm lint` checks JavaScript and TypeScript with ESLint.
-- `pnpm lint:fix` applies automatic lint fixes.
-- `pnpm format` formats the project with Prettier.
-- `pnpm format:check` checks formatting without changing files.
-- `pnpm test` runs the catalog import tests.
-- `pnpm build` checks TypeScript and builds the production app.
+- **DuckDuckGo, Kagi, Brave**: resolve bangs on their servers, which adds a network
+  round-trip to every search.
+- **[T3-Content/unduck](https://github.com/T3-Content/unduck)**: the original. DuckDuckGo
+  catalog, Plausible analytics, no settings page.
+- **[Flashbang](https://github.com/ph1losof/flashbang)**: redirects from a service worker
+  before the page renders. 14,000+ bangs, all enabled, plus site searches (`@w`), "Feeling
+  Lucky" and address-bar suggestions through its server. AGPL-3.0.
+- **[unduckified](https://github.com/taciturnaxolotl/unduckified)**: service-worker
+  redirects and address-bar suggestions. The hosted version loads Cloudflare's analytics
+  beacon.
+- **[bangs.fast](https://github.com/kristianvld/bangs.fast)**: static like this one, with a
+  choice of the DuckDuckGo or Kagi catalog and private `#q=` searches.
+- **[ReBang](https://github.com/Void-n-Null/rebang)** and
+  **[cf-unduck](https://github.com/mynameistito/cf-unduck)**: redirect from a Cloudflare
+  Worker, so searches go through a server. Both ship analytics.
 
-Development and production builds download `data/bangs.json` from
-[kagisearch/bangs](https://github.com/kagisearch/bangs) at the commit pinned in
-`scripts/kagi-bangs.mjs`; update `KAGI_BANGS_COMMIT` to pick up upstream changes.
-Relative search URLs, which point at Kagi search, are sent to DuckDuckGo with the same
-query instead. The catalog is bundled with the app; searches do not fetch it at
-runtime. Starting Vite requires network access, and a failed download or invalid
-catalog stops the build. Upstream licensing is preserved in
-`scripts/KAGI-BANGS-LICENSE`.
+Details on the other tools come from
+[Flashbang's comparison](https://github.com/ph1losof/flashbang#comparison-with-other-bang-tools)
+as of November 2026.
 
-CI runs lint, formatting, test, and build checks on pull requests and pushes to `main`.
+## Learn more
 
-## Firefox
-
-Visit https://g-ongenae.github.io/unduck/, right-click the address bar, and choose
-**Add “Unduck”** to install the site's OpenSearch definition with its magnifying-glass icon.
-If you already added Unduck manually and see a different icon, remove that entry in
-`about:preferences#search`, then add it again from the site. Firefox caches search-engine
-icons separately from tab icons. Select Unduck as your default search engine afterward
-if desired.
-
-The OpenSearch definition uses the deployed GitHub Pages URL. If you host a fork
-elsewhere, update the URLs in `public/opensearch.xml`.
-
-## Import links
-
-Settings opened with `#import=` followed by a backup's JSON in base64url restore that
-backup after you confirm, as the **Import** button does, so a setup script can bring the
-same bangs to every browser:
-
-```
-https://g-ongenae.github.io/unduck/?page=settings#import=eyJ2ZXJzaW9uIjox...
-```
-
-The hash never reaches the server, and is removed from the address bar before the import.
-
-## How is it that much faster?
-
-DuckDuckGo does their redirects server side. Their DNS is...not always great. Result is that it often takes ages.
-
-I solved this by doing all of the work client side. Once you've went to https://g-ongenae.github.io/unduck/ once, the JS is all cache'd and will never need to be downloaded again. Your device does the redirects, not me.
+- [Features](docs/FEATURES.md): bang syntax, settings, backups and import links.
+- [Architecture](docs/ARCHITECTURE.md): how redirects and the catalog work.
+- [Development](docs/DEVELOPMENT.md): commands, catalog updates and CI.
+- [Plan](PLAN.md): what comes next.
